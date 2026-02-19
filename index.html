@@ -446,7 +446,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // Client separato (senza session) per creare utenti senza fare logout dell'admin
 const sbAdmin = createClient(SUPABASE_URL, SUPABASE_ANON, {
-  auth: { autoRefreshToken: false, persistSession: false }
+  auth: { autoRefreshToken: false, persistSession: false, storageKey: 'sb-admin-auth' }
 });
 
 /* ══════════════════════════════════════
