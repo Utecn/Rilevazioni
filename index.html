@@ -166,6 +166,23 @@ body.sort-mode .sort-handle{display:block;}
 .icon-btn{background:var(--card2);border:1px solid var(--border2);color:var(--dim);width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;}
 .icon-btn:active{opacity:.7;}
 .icon-btn.del{border-color:var(--red);color:var(--red);}
+/* user expand panel */
+.user-body{display:none;padding:0 14px 14px;border-top:1px solid var(--border);}
+.admin-card.open .user-body{display:block;}
+.admin-card-header{cursor:pointer;}
+.user-fields{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.user-field-row{display:flex;gap:8px;flex-wrap:wrap;}
+.user-input{flex:1;min-width:100px;padding:9px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;outline:none;}
+.user-input:focus{border-color:var(--orange);}
+.user-select{flex:1;min-width:100px;padding:9px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;outline:none;}
+.user-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+.user-action-btn{flex:1;padding:8px 6px;background:var(--card2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;cursor:pointer;text-align:center;letter-spacing:.5px;white-space:nowrap;}
+.user-action-btn:active{opacity:.7;}
+.user-action-btn.save{border-color:var(--orange);color:var(--orange);}
+.user-action-btn.toggle-off{border-color:var(--cyan);color:var(--cyan);}
+.user-action-btn.toggle-on{border-color:var(--green);color:var(--green);}
+.user-action-btn.del{border-color:var(--red);color:var(--red);}
+.inactive-badge{padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;font-family:'Share Tech Mono',monospace;background:rgba(255,51,85,.15);color:var(--red);border:1px solid var(--red);}
 .add-form{background:var(--card2);border:1px solid var(--border2);border-radius:8px;padding:14px;margin-bottom:12px;}
 .add-form-title{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:10px;font-family:'Share Tech Mono',monospace;}
 .form-row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
@@ -435,8 +452,8 @@ body.sort-mode .sort-handle{display:block;}
    ⚙ CONFIGURAZIONE — modifica questi due valori
    Trovi entrambi in: Supabase Dashboard → Project Settings → API
 ══════════════════════════════════════ */
-const SUPABASE_URL  = 'https://bjirlbcnymwibtfjovce.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqaXJsYmNueW13aWJ0ZmpvdmNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MDM3ODUsImV4cCI6MjA4NzA3OTc4NX0.mDwGbTvdPxtY6gUqWus3WvrSyxy4IZdTCMurqZyhww4'; // anon public key
+const SUPABASE_URL  = 'https://XXXXXXXXXXXXXXXX.supabase.co';
+const SUPABASE_ANON = 'eyJ...'; // anon public key
 
 /* ══════════════════════════════════════
    INIT SUPABASE
@@ -446,7 +463,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // Client separato (senza session) per creare utenti senza fare logout dell'admin
 const sbAdmin = createClient(SUPABASE_URL, SUPABASE_ANON, {
-  auth: { autoRefreshToken: false, persistSession: false, storageKey: 'sb-admin-auth' }
+  auth: { autoRefreshToken: false, persistSession: false }
 });
 
 /* ══════════════════════════════════════
@@ -585,7 +602,7 @@ async function selectProject(proj){
 async function loadCards(){
   const { data, error } = await sb.from('cards')
     .select('*').eq('project_id',currentProject.id)
-    .order('position');
+    .order('position').order('created_at');
   if(error) throw error;
   cards = data.map(c=>({...c,running:false,start:null,elapsed:0}));
 }
@@ -975,15 +992,76 @@ async function loadUserList(){
   const {data:profiles}=await sb.from('profiles').select('id,name,role,active').order('name');
   const list=document.getElementById('userList'); list.innerHTML='';
   (profiles||[]).forEach(u=>{
+    const isSelf = u.id===currentUser.id;
     const card=document.createElement('div'); card.className='admin-card';
-    card.innerHTML='<div class="admin-card-header">'+
-      '<div class="admin-card-info"><div class="admin-card-name">'+esc(u.name)+'</div>'+
-      '<div class="admin-card-meta">'+(u.active?'attivo':'disattivato')+'</div></div>'+
-      '<span class="role-badge '+u.role+'">'+u.role+'</span>'+
-      '<div style="display:flex;gap:6px;">'+
-      (u.id!==currentUser.id?'<div class="icon-btn del" title="Elimina">🗑</div>':'')+
-      '</div></div>';
-    if(u.id!==currentUser.id) card.querySelector('.icon-btn.del').addEventListener('click',()=>deleteUserConfirm(u.id,u.name));
+    card.innerHTML=
+      '<div class="admin-card-header">'+
+        '<div class="admin-card-info">'+
+          '<div class="admin-card-name">'+esc(u.name)+(isSelf?' <span style="color:var(--dim);font-size:10px;">(tu)</span>':'')+'</div>'+
+          '<div class="admin-card-meta">'+(u.active?'attivo':'<span style="color:var(--red)">disattivato</span>')+'</div>'+
+        '</div>'+
+        '<span class="role-badge '+u.role+'">'+u.role+'</span>'+
+        '<span style="color:var(--dim);font-size:16px;margin-left:6px;">'+(isSelf?'':'▾')+'</span>'+
+      '</div>'+
+      (!isSelf?
+        '<div class="user-body">'+
+          '<div class="user-fields">'+
+            '<div class="user-field-row">'+
+              '<input class="user-input" data-field="name" placeholder="Nome" value="'+esc(u.name)+'">'+
+              '<select class="user-select" data-field="role">'+
+                '<option value="operatore"'+(u.role==='operatore'?' selected':'')+'>Operatore</option>'+
+                '<option value="admin"'+(u.role==='admin'?' selected':'')+'>Admin</option>'+
+              '</select>'+
+            '</div>'+
+            '<input class="user-input" data-field="password" type="password" placeholder="Nuova password (lascia vuoto per non cambiare)">'+
+          '</div>'+
+          '<div class="user-actions">'+
+            '<div class="user-action-btn save" data-uid="'+u.id+'">💾 SALVA</div>'+
+            '<div class="user-action-btn '+(u.active?'toggle-off':'toggle-on')+'" data-uid="'+u.id+'" data-active="'+u.active+'">'+(u.active?'⏸ DISATTIVA':'▶ ATTIVA')+'</div>'+
+            '<div class="user-action-btn del" data-uid="'+u.id+'" data-name="'+esc(u.name)+'">🗑 ELIMINA</div>'+
+          '</div>'+
+        '</div>'
+      :'');
+
+    // Toggle espandi/comprimi (non per se stessi)
+    if(!isSelf){
+      card.querySelector('.admin-card-header').addEventListener('click',()=>card.classList.toggle('open'));
+      card.querySelector('.user-action-btn.save').addEventListener('click', async e=>{
+        e.stopPropagation();
+        const name=card.querySelector('[data-field="name"]').value.trim();
+        const role=card.querySelector('[data-field="role"]').value;
+        const pw=card.querySelector('[data-field="password"]').value;
+        if(!name){toast('Nome obbligatorio');return;}
+        try{
+          await sb.from('profiles').update({name,role}).eq('id',u.id);
+          if(pw){
+            if(pw.length<6){toast('Password minimo 6 caratteri');return;}
+            // reset password via admin client
+            const {error}=await sbAdmin.auth.admin?.updateUserById?.(u.id,{password:pw})
+              || await sbAdmin.rpc('reset_user_password',{uid:u.id,new_pw:pw});
+            if(error)throw error;
+          }
+          await loadUserList(); toast('Utente aggiornato');
+        }catch(e){toast('⚠ '+e.message);}
+      });
+      card.querySelector('.user-action-btn[data-active]').addEventListener('click', async e=>{
+        e.stopPropagation();
+        const newActive = e.currentTarget.dataset.active==='true'?false:true;
+        try{
+          await sb.from('profiles').update({active:newActive}).eq('id',u.id);
+          await loadUserList(); toast(newActive?'Utente attivato':'Utente disattivato');
+        }catch(e){toast('⚠ '+e.message);}
+      });
+      card.querySelector('.user-action-btn.del').addEventListener('click', async e=>{
+        e.stopPropagation();
+        const name=e.currentTarget.dataset.name;
+        if(!confirm('Eliminare definitivamente "'+name+'"?\nLe sue rilevazioni rimarranno nel database.'))return;
+        try{
+          await sb.from('profiles').delete().eq('id',u.id);
+          await loadUserList(); toast('Utente eliminato');
+        }catch(e){toast('⚠ '+e.message);}
+      });
+    }
     list.appendChild(card);
   });
 }
@@ -996,22 +1074,15 @@ async function createUser(){
   if(!name||!email||!password){toast('Compila tutti i campi');return;}
   if(password.length<6){toast('Password minimo 6 caratteri');return;}
   try {
-    // Usa il client separato per non fare logout dell'admin
     const {data,error}=await sbAdmin.auth.signUp({email,password,options:{data:{name,role}}});
     if(error)throw error;
-    // Se email confirmation è OFF, il profilo viene creato dal trigger automaticamente
-    // Se è ON, verrà creato al primo login dell'utente
+    // Crea profilo manualmente nel caso in cui email confirmation sia ON
+    if(data.user){
+      await sb.from('profiles').upsert({id:data.user.id,name,role,active:true},{onConflict:'id'});
+    }
     ['uName','uEmail','uPass'].forEach(id=>document.getElementById(id).value='');
     await loadUserList(); toast('Utente "'+name+'" creato');
   } catch(e){toast('⚠ '+e.message);}
-}
-
-async function deleteUserConfirm(id,name){
-  if(!confirm('Eliminare l\'utente "'+name+'"? Le sue rilevazioni rimarranno nel database.'))return;
-  try {
-    await sb.from('profiles').update({active:false}).eq('id',id);
-    await loadUserList(); toast('Utente disattivato');
-  } catch(e){toast('Errore: '+e.message);}
 }
 
 async function loadProjectAdminList(){
