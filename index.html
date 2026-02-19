@@ -602,7 +602,7 @@ async function selectProject(proj){
 async function loadCards(){
   const { data, error } = await sb.from('cards')
     .select('*').eq('project_id',currentProject.id)
-    .order('position').order('created_at');
+    .order('position');
   if(error) throw error;
   cards = data.map(c=>({...c,running:false,start:null,elapsed:0}));
 }
