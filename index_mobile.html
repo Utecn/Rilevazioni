@@ -671,7 +671,7 @@ async function selectContract(contract){
   showLoading('CARICAMENTO...');
   try {
     const { data:projects, error } = await sb.from('projects')
-      .select('id,name,created_at').eq('contract_id',contract.id).order('created_at',{ascending:false});
+      .select('id,name,created_at,responsible_id,profiles!projects_responsible_id_fkey(name)').eq('contract_id',contract.id).order('created_at',{ascending:false});
     if(error) throw error;
     const counts = await Promise.all(projects.map(p =>
       sb.from('log_entries').select('id',{count:'exact',head:true}).eq('project_id',p.id)
@@ -703,7 +703,7 @@ function renderProjects(projects){
       '</div>'+
       (currentUser.role==='admin'?'<div class="proj-item-del">✕</div>':'');
     item.querySelector('.proj-item-body').addEventListener('click',()=>selectProject(p));
-    if(currentUser.role==='admin') item.querySelector('.proj-item-del').addEventListener('click',e=>{e.stopPropagation();deleteProjConfirm(p.id,p.name);});
+    if(currentUser.role==='admin'||p.responsible_id===currentUser.id) item.querySelector('.proj-item-del')?.addEventListener('click',e=>{e.stopPropagation();deleteProjConfirm(p.id,p.name);});
     list.appendChild(item);
   });
 }
@@ -1228,7 +1228,7 @@ function openNewProjSheet(){ document.getElementById('newProjInput').value=''; s
 async function doCreateProject(){
   const name=document.getElementById('newProjInput').value.trim(); if(!name){document.getElementById('newProjInput').focus();return;}
   try {
-    const {data,error}=await sb.from('projects').insert({name,created_by:currentUser.id,contract_id:currentContract?.id||null}).select().single();
+    const {data,error}=await sb.from('projects').insert({name,created_by:currentUser.id,responsible_id:currentUser.id,contract_id:currentContract?.id||null}).select().single();
     if(error)throw error;
     const defaults=['01','02','03','04','05','06','07','08','09','10'];
     await sb.from('cards').insert(defaults.map((n,i)=>({project_id:data.id,name:n,position:i})));
@@ -1565,7 +1565,7 @@ async function createUser(){
 
 async function loadProjectAdminList(){
   const [{data:projects},{data:allProfiles}]=await Promise.all([
-    sb.from('projects').select('id,name,created_at,contracts(name)').order('created_at',{ascending:false}),
+    sb.from('projects').select('id,name,created_at,responsible_id,contracts(name),profiles!projects_responsible_id_fkey(name)').order('created_at',{ascending:false}),
     sb.from('profiles').select('id,name,role').eq('active',true).eq('role','operatore')
   ]);
   const list=document.getElementById('projectAdminList'); list.innerHTML='';
@@ -1576,7 +1576,7 @@ async function loadProjectAdminList(){
     const card=document.createElement('div'); card.className='proj-admin-card';
     card.innerHTML=
       '<div class="proj-admin-header"><div><div class="proj-admin-name">'+esc(p.name)+'</div>'+
-      '<div class="proj-admin-meta">'+(p.contracts?.name||'—')+' · '+mList.length+' membri</div></div><span class="proj-admin-chevron">▾</span></div>'+
+      '<div class="proj-admin-meta">'+(p.contracts?.name||'—')+' · resp: '+(p.profiles?.name||'—')+' · '+mList.length+' membri</div></div><span class="proj-admin-chevron">▾</span></div>'+
       '<div class="proj-admin-body">'+
         '<div class="members-title">MEMBRI</div>'+
         '<div class="mem-list">'+
@@ -1589,6 +1589,13 @@ async function loadProjectAdminList(){
             '<select class="member-select">'+nonMembers.map(u=>'<option value="'+u.id+'">'+esc(u.name)+'</option>').join('')+'</select>'+
             '<button class="add-member-btn" data-pid="'+p.id+'">＋ AGG.</button>'+
           '</div>':'')+
+        '<div class="members-title">RESPONSABILE</div>'+
+        '<div class="add-member-wrap">'+
+          '<select class="member-select" id="resp_'+p.id+'">'+
+            (allProfiles||[]).map(u=>'<option value="'+u.id+'"'+(u.id===p.responsible_id?' selected':'')+'>'+esc(u.name)+'</option>').join('')+
+          '</select>'+
+          '<button class="add-member-btn" style="background:var(--orange);" data-pid="'+p.id+'">✓ SALVA</button>'+
+        '</div>'+
         '<div class="proj-admin-actions">'+
           '<div class="proj-action-btn rename-btn" data-pid="'+p.id+'" data-name="'+esc(p.name)+'">✏ RINOMINA</div>'+
           '<div class="proj-action-btn del del-btn" data-pid="'+p.id+'" data-name="'+esc(p.name)+'">🗑 ELIMINA</div>'+
@@ -1598,10 +1605,22 @@ async function loadProjectAdminList(){
     card.querySelectorAll('.member-remove').forEach(btn=>btn.addEventListener('click',async()=>{
       try{const{error}=await sb.from('project_members').delete().eq('project_id',btn.dataset.pid).eq('user_id',btn.dataset.uid);if(error)throw error;await loadProjectAdminList();toast('Membro rimosso');}catch(e){toast(e.message);}
     }));
-    const addBtn=card.querySelector('.add-member-btn');
+    // Pulsante "aggiungi membro"
+    const addBtn=card.querySelector('.add-member-btn[style*="green"], .add-member-btn:not([style*="orange"])');
     if(addBtn) addBtn.addEventListener('click',async()=>{
       const sel=card.querySelector('.member-select');
       try{const{error}=await sb.from('project_members').insert({project_id:addBtn.dataset.pid,user_id:sel.value});if(error)throw error;await loadProjectAdminList();toast('Membro aggiunto');}catch(e){toast(e.message);}
+    });
+    // Pulsante "salva responsabile"
+    const respBtn=card.querySelector('.add-member-btn[style*="orange"]');
+    if(respBtn) respBtn.addEventListener('click',async()=>{
+      const sel=document.getElementById('resp_'+respBtn.dataset.pid);
+      if(!sel)return;
+      try{
+        const{error}=await sb.from('projects').update({responsible_id:sel.value}).eq('id',respBtn.dataset.pid);
+        if(error)throw error;
+        await loadProjectAdminList();toast('Responsabile aggiornato');
+      }catch(e){toast('⚠ '+e.message);}
     });
     card.querySelector('.rename-btn').addEventListener('click',async()=>{
       const btn=card.querySelector('.rename-btn');
@@ -1620,7 +1639,7 @@ async function adminCreateProject(){
   const name=document.getElementById('pName').value.trim(); if(!name){toast('Inserisci il nome');return;}
   const contractId=document.getElementById('pContract').value; if(!contractId){toast('Seleziona un appalto');return;}
   try{
-    const {data:proj,error}=await sb.from('projects').insert({name,created_by:currentUser.id,contract_id:contractId}).select().single();
+    const {data:proj,error}=await sb.from('projects').insert({name,created_by:currentUser.id,responsible_id:currentUser.id,contract_id:contractId}).select().single();
     if(error)throw error;
     await sb.from('cards').insert(['01','02','03','04','05','06','07','08','09','10'].map((n,i)=>({project_id:proj.id,name:n,position:i})));
     document.getElementById('pName').value='';
