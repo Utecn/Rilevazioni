@@ -685,7 +685,7 @@ async function doCreateContract(){
 }
 
 async function deleteContractConfirm(id,name){
-  if(!confirm('Eliminare l'appalto "'+name+'" e tutti i suoi progetti?'))return;
+  if(!confirm('Eliminare l\'appalto "'+name+'" e tutti i suoi progetti?'))return;
   try{
     const {error}=await sb.from('contracts').delete().eq('id',id);
     if(error)throw error;
