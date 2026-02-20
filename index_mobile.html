@@ -916,6 +916,9 @@ document.addEventListener('keydown', e=>{
 });
 
 async function selectProcess(proc, label){
+  // Ferma qualsiasi timer precedente prima di tutto
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  cards.forEach(c=>{c.running=false;c.start=null;c.elapsed=0;});
   currentProcess={...proc, label};
   document.getElementById('procIndicator').textContent=label;
   document.getElementById('procIndicator').style.display='block';
@@ -923,14 +926,20 @@ async function selectProcess(proc, label){
   showLoading('CARICAMENTO...');
   try{
     await loadCards();
-    // Se non ci sono tasti, crea i 10 default
+    // Se non ci sono tasti, crea i 10 default (una volta sola)
     if(cards.length===0){
-      const defaults=['01','02','03','04','05','06','07','08','09','10'];
-      const {error}=await sb.from('cards').insert(
-        defaults.map((n,i)=>({project_id:currentProject.id,name:n,position:i}))
-      );
-      if(error) throw error;
-      await loadCards();
+      // Ricontrolla dal DB per evitare race condition
+      const {data:existing}=await sb.from('cards').select('id').eq('project_id',currentProject.id).limit(1);
+      if(!existing||existing.length===0){
+        const defaults=['01','02','03','04','05','06','07','08','09','10'];
+        const {error}=await sb.from('cards').insert(
+          defaults.map((n,i)=>({project_id:currentProject.id,name:n,position:i}))
+        );
+        if(error) throw error;
+        await loadCards();
+      } else {
+        await loadCards(); // altri li hanno già creati
+      }
     }
     await loadLog();
   }
