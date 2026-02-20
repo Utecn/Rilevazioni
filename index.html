@@ -84,6 +84,7 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 .hbtn.sort-active{border-color:var(--cyan);color:var(--cyan);}
 .hbtn.add{background:var(--orange);border-color:var(--orange);color:#fff;}
 .hbtn.hist{border-color:var(--green);color:var(--green);}
+.hbtn.home{border-color:var(--border2);color:var(--dim);font-size:16px;padding:5px 9px;}
 
 /* ── SORT BANNER ── */
 .sort-banner{display:none;flex-shrink:0;background:rgba(0,229,255,.05);border-bottom:1px solid var(--cyan);padding:7px 14px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--cyan);letter-spacing:1px;text-align:center;}
@@ -156,7 +157,7 @@ body.sort-mode .sort-handle{display:block;}
 .admin-section{display:none;}
 .admin-section.active{display:block;}
 .admin-card{background:var(--card);border:1px solid var(--border2);border-radius:8px;margin-bottom:8px;}
-.admin-card-header{display:flex;align-items:center;padding:12px 14px;gap:10px;}
+.admin-card-header{display:flex;align-items:center;padding:12px 14px;gap:10px;cursor:pointer;}
 .admin-card-info{flex:1;}
 .admin-card-name{font-size:14px;font-weight:700;}
 .admin-card-meta{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:2px;}
@@ -166,10 +167,8 @@ body.sort-mode .sort-handle{display:block;}
 .icon-btn{background:var(--card2);border:1px solid var(--border2);color:var(--dim);width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;}
 .icon-btn:active{opacity:.7;}
 .icon-btn.del{border-color:var(--red);color:var(--red);}
-/* user expand panel */
 .user-body{display:none;padding:0 14px 14px;border-top:1px solid var(--border);}
 .admin-card.open .user-body{display:block;}
-.admin-card-header{cursor:pointer;}
 .user-fields{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
 .user-field-row{display:flex;gap:8px;flex-wrap:wrap;}
 .user-input{flex:1;min-width:100px;padding:9px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;outline:none;}
@@ -311,6 +310,8 @@ body.sort-mode .sort-handle{display:block;}
 
 <!-- APP -->
 <div class="header">
+  <!-- ⌂ TASTO HOME — torna alla selezione progetto -->
+  <button class="hbtn home" onclick="goHome()" title="Home">⌂</button>
   <div class="proj-selector" onclick="openProjSheet()">
     <span class="proj-selector-icon">◈</span>
     <span class="proj-selector-name" id="projSelectorName">—</span>
@@ -448,29 +449,17 @@ body.sort-mode .sort-handle{display:block;}
 <div class="toast" id="toast"></div>
 
 <script>
-/* ══════════════════════════════════════
-   ⚙ CONFIGURAZIONE — modifica questi due valori
-   Trovi entrambi in: Supabase Dashboard → Project Settings → API
-══════════════════════════════════════ */
 const SUPABASE_URL  = 'https://bjirlbcnymwibtfjovce.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqaXJsYmNueW13aWJ0ZmpvdmNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MDM3ODUsImV4cCI6MjA4NzA3OTc4NX0.mDwGbTvdPxtY6gUqWus3WvrSyxy4IZdTCMurqZyhww4'; // anon public key
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqaXJsYmNueW13aWJ0ZmpvdmNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MDM3ODUsImV4cCI6MjA4NzA3OTc4NX0.mDwGbTvdPxtY6gUqWus3WvrSyxy4IZdTCMurqZyhww4';
 
-/* ══════════════════════════════════════
-   INIT SUPABASE
-══════════════════════════════════════ */
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
-
-// Client separato (senza session) per creare utenti senza fare logout dell'admin
 const sbAdmin = createClient(SUPABASE_URL, SUPABASE_ANON, {
-  auth: { autoRefreshToken: false, persistSession: false }
+  auth: { autoRefreshToken: false, persistSession: false, storageKey: 'sb-admin-auth' }
 });
 
-/* ══════════════════════════════════════
-   STATO
-══════════════════════════════════════ */
-let currentUser    = null;   // { id, email, name, role }
-let currentProject = null;   // { id, name, ... }
+let currentUser    = null;
+let currentProject = null;
 let cards          = [];
 let logEntries     = [];
 let sortMode       = false;
@@ -478,9 +467,6 @@ let ctxId          = null;
 let rafId          = null;
 let renameProjId   = null;
 
-/* ══════════════════════════════════════
-   UTILS
-══════════════════════════════════════ */
 function p2(n){ return String(n).padStart(2,'0'); }
 function fmt(ms){
   const mil=String(Math.floor(ms%1000)).padStart(3,'0'),s=Math.floor(ms/1000),
@@ -496,9 +482,7 @@ function vib(n){ try{navigator.vibrate&&navigator.vibrate(n);}catch(e){} }
 function dateStr(iso){ if(!iso)return'—'; const d=new Date(iso); return p2(d.getDate())+'/'+p2(d.getMonth()+1)+'/'+d.getFullYear(); }
 function timeStr(iso){ if(!iso)return'—'; const d=new Date(iso); return p2(d.getHours())+':'+p2(d.getMinutes())+':'+p2(d.getSeconds()); }
 
-/* ══════════════════════════════════════
-   AUTH
-══════════════════════════════════════ */
+/* ── AUTH ── */
 async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
   const password=document.getElementById('loginPassword').value;
@@ -508,7 +492,6 @@ async function doLogin(){
   try {
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if(error) throw error;
-    // Carica profilo
     const { data: prof } = await sb.from('profiles').select('name,role,active').eq('id',data.user.id).single();
     if(!prof?.active){ await sb.auth.signOut(); throw new Error('Account disattivato'); }
     currentUser = { id:data.user.id, email:data.user.email, name:prof.name, role:prof.role };
@@ -544,17 +527,13 @@ function afterLogin(){
   loadSplash();
 }
 
-/* ══════════════════════════════════════
-   SPLASH
-══════════════════════════════════════ */
+/* ── SPLASH ── */
 async function loadSplash(){
   showLoading('CARICAMENTO...');
   try {
     const { data:projects, error } = await sb.from('projects')
-      .select('id,name,created_at')
-      .order('created_at',{ascending:false});
+      .select('id,name,created_at').order('created_at',{ascending:false});
     if(error) throw error;
-    // Conta rilevazioni per progetto
     const counts = await Promise.all(projects.map(p =>
       sb.from('log_entries').select('id',{count:'exact',head:true}).eq('project_id',p.id)
     ));
@@ -596,13 +575,10 @@ async function selectProject(proj){
   finally { hideLoading(); setTimeout(()=>renderAll(),80); }
 }
 
-/* ══════════════════════════════════════
-   CARDS
-══════════════════════════════════════ */
+/* ── CARDS ── */
 async function loadCards(){
   const { data, error } = await sb.from('cards')
-    .select('*').eq('project_id',currentProject.id)
-    .order('position');
+    .select('*').eq('project_id',currentProject.id).order('position');
   if(error) throw error;
   cards = data.map(c=>({...c,running:false,start:null,elapsed:0}));
 }
@@ -616,9 +592,7 @@ async function loadLog(){
   updateFooter();
 }
 
-/* ══════════════════════════════════════
-   RENDER CARDS
-══════════════════════════════════════ */
+/* ── RENDER ── */
 function renderAll(){
   const grid=document.getElementById('grid'); grid.innerHTML='';
   cards.forEach(c=>grid.appendChild(makeCard(c)));
@@ -676,9 +650,8 @@ async function swapCards(srcId,tgtId){
   const si=cards.findIndex(c=>c.id===srcId),ti=cards.findIndex(c=>c.id===tgtId);
   if(si<0||ti<0)return;
   const [r]=cards.splice(si,1); cards.splice(ti,0,r); renderAll();
-  try {
-    await Promise.all(cards.map((c,i)=>sb.from('cards').update({position:i}).eq('id',c.id)));
-  } catch(e){ toast('Errore ordine'); }
+  try { await Promise.all(cards.map((c,i)=>sb.from('cards').update({position:i}).eq('id',c.id))); }
+  catch(e){ toast('Errore ordine'); }
 }
 
 let tDId=null,gh=null;
@@ -704,9 +677,7 @@ document.addEventListener('touchend',function(e){
   const ov=un?.closest('.card'); if(ov&&ov.dataset.id!==tDId)swapCards(tDId,ov.dataset.id); tDId=null;
 });
 
-/* ══════════════════════════════════════
-   TOGGLE CRONOMETRO
-══════════════════════════════════════ */
+/* ── TOGGLE CRONOMETRO ── */
 async function toggleCard(id){
   const c=cards.find(x=>x.id===id); if(!c)return; vib(20);
   if(!c.running){
@@ -753,9 +724,18 @@ function updateFooter(){
   document.getElementById('fActive').textContent=cards.filter(c=>c.running).length;
 }
 
-/* ══════════════════════════════════════
-   SORT MODE
-══════════════════════════════════════ */
+/* ── HOME ── */
+function goHome(){
+  stopAllTimers();
+  closeAllSheets();
+  currentProject=null;
+  cards=[]; logEntries=[];
+  renderAll();
+  document.getElementById('projSelectorName').textContent='—';
+  loadSplash();
+}
+
+/* ── SORT MODE ── */
 function toggleSort(){
   sortMode=!sortMode; document.body.classList.toggle('sort-mode',sortMode);
   document.getElementById('sortBanner').classList.toggle('show',sortMode);
@@ -765,9 +745,7 @@ function toggleSort(){
   renderAll();
 }
 
-/* ══════════════════════════════════════
-   TASTI — OPZIONI
-══════════════════════════════════════ */
+/* ── TASTI OPZIONI ── */
 function openRename(){
   const name=cards.find(c=>c.id===ctxId)?.name||''; const sid=ctxId;
   closeSheet('ctxOverlay');
@@ -783,9 +761,7 @@ async function doRename(){
   } catch(e){toast('Errore: '+e.message);}
 }
 document.getElementById('renameInput').addEventListener('keydown',e=>{if(e.key==='Enter')doRename();});
-
 function openSortFromCtx(){ closeSheet('ctxOverlay'); if(!sortMode)toggleSort(); }
-
 async function doDelete(){
   const id=ctxId; closeSheet('ctxOverlay');
   try {
@@ -794,7 +770,6 @@ async function doDelete(){
     renderAll(); toast('Tasto eliminato');
   } catch(e){toast('Errore: '+e.message);}
 }
-
 function openAdd(){ document.getElementById('addInput').value=''; showSheet('addOverlay'); setTimeout(()=>document.getElementById('addInput').focus(),120); }
 async function doAdd(){
   const v=document.getElementById('addInput').value.trim()||'Tasto '+(cards.length+1);
@@ -806,15 +781,12 @@ async function doAdd(){
 }
 document.getElementById('addInput').addEventListener('keydown',e=>{if(e.key==='Enter')doAdd();});
 
-/* ══════════════════════════════════════
-   GESTIONE PROGETTI (sheet)
-══════════════════════════════════════ */
+/* ── GESTIONE PROGETTI ── */
 async function openProjSheet(){
   const {data:projects}=await sb.from('projects').select('id,name,created_at').order('created_at',{ascending:false});
   renderProjSheet(projects||[]);
   showSheet('projOverlay');
 }
-
 function renderProjSheet(projects){
   const wrap=document.getElementById('projSheetList'); wrap.innerHTML='';
   if(!projects.length){wrap.innerHTML='<div style="color:var(--dim);font-size:12px;font-family:\'Share Tech Mono\',monospace;padding:8px 0 12px;text-align:center;">Nessun progetto</div>';return;}
@@ -838,15 +810,12 @@ function renderProjSheet(projects){
   const note=document.createElement('div'); note.style.cssText='font-size:10px;color:var(--dim);font-family:\'Share Tech Mono\',monospace;text-align:center;padding:4px 0 8px;';
   note.textContent='tap sul progetto attivo per rinominarlo'; wrap.appendChild(note);
 }
-
 function openNewProjSheet(){ document.getElementById('newProjInput').value=''; showSheet('newProjOverlay'); setTimeout(()=>document.getElementById('newProjInput').focus(),120); }
-
 async function doCreateProject(){
   const name=document.getElementById('newProjInput').value.trim(); if(!name){document.getElementById('newProjInput').focus();return;}
   try {
     const {data,error}=await sb.from('projects').insert({name,created_by:currentUser.id}).select().single();
     if(error)throw error;
-    // Crea tasti di default
     const defaults=['01','02','03','04','05','06','07','08','09','10'];
     await sb.from('cards').insert(defaults.map((n,i)=>({project_id:data.id,name:n,position:i})));
     closeAllSheets(); await loadSplash(); toast('Progetto "'+name+'" creato');
@@ -856,7 +825,6 @@ async function doCreateProject(){
   }
 }
 document.getElementById('newProjInput').addEventListener('keydown',e=>{if(e.key==='Enter')doCreateProject();});
-
 async function doRenameProj(){
   const name=document.getElementById('renameProjInput').value.trim(); if(!name){document.getElementById('renameProjInput').focus();return;}
   try {
@@ -869,7 +837,6 @@ async function doRenameProj(){
   }
 }
 document.getElementById('renameProjInput').addEventListener('keydown',e=>{if(e.key==='Enter')doRenameProj();});
-
 async function deleteProjConfirm(id,name){
   if(!confirm('Eliminare il progetto "'+name+'" e tutti i dati?'))return;
   try {
@@ -879,9 +846,7 @@ async function deleteProjConfirm(id,name){
   } catch(e){toast('Errore: '+e.message);}
 }
 
-/* ══════════════════════════════════════
-   STORICO
-══════════════════════════════════════ */
+/* ── STORICO ── */
 async function openHistory(){
   document.getElementById('histProjLabel').textContent=currentProject?.name||'';
   document.getElementById('clearBtn').style.display=currentUser?.role==='admin'?'':'none';
@@ -893,9 +858,7 @@ async function openHistory(){
   document.getElementById('histScreen').classList.add('show');
 }
 function closeHistory(){ document.getElementById('histScreen').classList.remove('show'); }
-
 function getFilteredLog(){ const f=document.getElementById('filterSelect').value; return f?logEntries.filter(r=>r.card_name===f):[...logEntries]; }
-
 function renderHistory(){
   const body=document.getElementById('histBody'),filtered=getFilteredLog(),tot=filtered.length;
   document.getElementById('hsTot').textContent=tot;
@@ -922,7 +885,6 @@ function renderHistory(){
     body.appendChild(grp);
   });
 }
-
 async function confirmClear(){
   const f=document.getElementById('filterSelect').value;
   if(!confirm(f?'Svuotare le rilevazioni di "'+f+'"?':'Svuotare tutto lo storico del progetto?'))return;
@@ -936,11 +898,8 @@ async function confirmClear(){
   } catch(e){toast('Errore: '+e.message);}
 }
 
-/* ══════════════════════════════════════
-   EXPORT EXCEL
-══════════════════════════════════════ */
+/* ── EXPORT EXCEL ── */
 function openExport(){ document.getElementById('emailInput').value=''; showSheet('exportOverlay'); setTimeout(()=>document.getElementById('emailInput').focus(),120); }
-
 async function doExport(){
   const filtered=getFilteredLog(); if(!filtered.length){toast('Nessuna rilevazione');return;}
   const sorted=[...filtered].sort((a,b)=>new Date(a.started_at)-new Date(b.started_at));
@@ -976,9 +935,7 @@ async function doExport(){
   if(email){setTimeout(()=>{const s=encodeURIComponent('Rilevazioni — '+currentProject?.name);const b=encodeURIComponent('Ciao,\n\nallego "'+fname+'".\n\n(Allega il file scaricato)');window.location.href='mailto:'+encodeURIComponent(email)+'?subject='+s+'&body='+b;},600);}
 }
 
-/* ══════════════════════════════════════
-   ADMIN PANEL
-══════════════════════════════════════ */
+/* ── ADMIN PANEL ── */
 function openAdminPanel(){ loadAdminData(); document.getElementById('adminScreen').classList.add('show'); }
 function closeAdminPanel(){ document.getElementById('adminScreen').classList.remove('show'); }
 function switchAdminTab(tab){
@@ -1022,8 +979,6 @@ async function loadUserList(){
           '</div>'+
         '</div>'
       :'');
-
-    // Toggle espandi/comprimi (non per se stessi)
     if(!isSelf){
       card.querySelector('.admin-card-header').addEventListener('click',()=>card.classList.toggle('open'));
       card.querySelector('.user-action-btn.save').addEventListener('click', async e=>{
@@ -1036,7 +991,6 @@ async function loadUserList(){
           await sb.from('profiles').update({name,role}).eq('id',u.id);
           if(pw){
             if(pw.length<6){toast('Password minimo 6 caratteri');return;}
-            // reset password via admin client
             const {error}=await sbAdmin.auth.admin?.updateUserById?.(u.id,{password:pw})
               || await sbAdmin.rpc('reset_user_password',{uid:u.id,new_pw:pw});
             if(error)throw error;
@@ -1076,7 +1030,6 @@ async function createUser(){
   try {
     const {data,error}=await sbAdmin.auth.signUp({email,password,options:{data:{name,role}}});
     if(error)throw error;
-    // Crea profilo manualmente nel caso in cui email confirmation sia ON
     if(data.user){
       await sb.from('profiles').upsert({id:data.user.id,name,role,active:true},{onConflict:'id'});
     }
@@ -1140,16 +1093,15 @@ async function loadProjectAdminList(){
 
 async function adminCreateProject(){
   const name=document.getElementById('pName').value.trim(); if(!name){toast('Inserisci il nome');return;}
-  try{const{error}=await sb.from('projects').insert({name,created_by:currentUser.id});if(error)throw error;
+  try{
+    const{error}=await sb.from('projects').insert({name,created_by:currentUser.id});if(error)throw error;
     const {data:proj}=await sb.from('projects').select('id').eq('name',name).single();
     await sb.from('cards').insert(['01','02','03','04','05','06','07','08','09','10'].map((n,i)=>({project_id:proj.id,name:n,position:i})));
-    document.getElementById('pName').value='';await loadProjectAdminList();toast('Progetto creato');}
-  catch(e){toast('⚠ '+e.message);}
+    document.getElementById('pName').value='';await loadProjectAdminList();toast('Progetto creato');
+  }catch(e){toast('⚠ '+e.message);}
 }
 
-/* ══════════════════════════════════════
-   SHEET HELPERS
-══════════════════════════════════════ */
+/* ── SHEET HELPERS ── */
 function showSheet(id){ document.getElementById(id).classList.add('show'); }
 function closeSheet(id){ document.getElementById(id).classList.remove('show'); }
 function closeAllSheets(){
@@ -1159,9 +1111,7 @@ function closeAllSheets(){
 ['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay']
 .forEach(id=>document.getElementById(id).addEventListener('click',e=>{if(e.target.id===id)closeSheet(id);}));
 
-/* ══════════════════════════════════════
-   TOAST / LOADING
-══════════════════════════════════════ */
+/* ── TOAST / LOADING ── */
 let toastT=null;
 function toast(msg){
   const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
@@ -1175,9 +1125,7 @@ function hideLoading(){ document.getElementById('loadingScreen').classList.add('
 
 document.addEventListener('contextmenu',e=>e.preventDefault());
 
-/* ══════════════════════════════════════
-   BOOT — controlla sessione esistente
-══════════════════════════════════════ */
+/* ── BOOT ── */
 (async function boot(){
   showLoading('CONNESSIONE...');
   try {
