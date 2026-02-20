@@ -269,6 +269,37 @@ body.sort-mode .sort-handle{display:block;}
 .proj-sheet-del{padding:0 14px;align-self:stretch;display:flex;align-items:center;border-left:1px solid var(--border2);color:var(--red);font-size:16px;cursor:pointer;}
 .proj-divider{border:none;border-top:1px solid var(--border2);margin:12px 0;}
 
+/* ── PROCESS SCREEN ── */
+.process-screen{position:fixed;inset:0;z-index:550;background:var(--bg);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
+.process-screen.show{transform:translateX(0);}
+.proc-header{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--border);}
+.proc-back{background:var(--card2);border:1px solid var(--border2);color:var(--text);padding:6px 12px;border-radius:6px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+.proc-back:active{opacity:.7;}
+.proc-title{flex:1;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;}
+.proc-title span{color:var(--cyan);}
+.proc-proj{font-size:10px;color:var(--purple);font-family:'Share Tech Mono',monospace;}
+.proc-body{flex:1;overflow-y:auto;padding:12px;}
+.proc-item{display:flex;align-items:center;background:var(--card);border:1px solid var(--border2);border-radius:8px;margin-bottom:8px;cursor:pointer;overflow:hidden;}
+.proc-item:active{opacity:.75;}
+.proc-item-body{flex:1;padding:12px 14px;}
+.proc-item-name{font-size:14px;font-weight:700;color:var(--cyan);}
+.proc-item-detail{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;line-height:1.6;}
+.proc-item-del{padding:0 14px;align-self:stretch;display:flex;align-items:center;border-left:1px solid var(--border2);color:var(--red);font-size:16px;cursor:pointer;}
+.proc-empty{padding:40px 20px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);line-height:2;}
+.proc-add-btn{width:100%;padding:13px;background:var(--cyan);border:none;border-radius:8px;color:#000;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;cursor:pointer;margin-bottom:10px;}
+.proc-add-btn:active{opacity:.8;}
+/* Form nuovo processo */
+.proc-form{background:var(--card2);border:1px solid var(--border2);border-radius:8px;padding:14px;margin-bottom:12px;}
+.proc-form-title{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:12px;font-family:'Share Tech Mono',monospace;}
+.proc-field{margin-bottom:10px;}
+.proc-label{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;display:block;margin-bottom:5px;}
+.proc-select{width:100%;padding:10px 12px;background:var(--card);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;outline:none;}
+.proc-select:focus{border-color:var(--cyan);}
+.proc-submit{width:100%;padding:11px;background:var(--cyan);border:none;border-radius:6px;color:#000;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;cursor:pointer;margin-top:4px;}
+.proc-submit:active{opacity:.8;}
+/* Indicatore processo attivo nell'header */
+.proc-indicator{font-size:9px;font-family:'Share Tech Mono',monospace;color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
+
 /* ── TOAST ── */
 .toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--card2);border:1px solid var(--border2);color:var(--text);padding:9px 18px;border-radius:30px;font-family:'Share Tech Mono',monospace;font-size:12px;white-space:nowrap;opacity:0;pointer-events:none;z-index:3000;transition:opacity .2s,transform .2s;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -325,7 +356,10 @@ body.sort-mode .sort-handle{display:block;}
   <button class="hbtn home" onclick="goHome()" title="Home">⌂</button>
   <div class="proj-selector" onclick="openProjSheet()">
     <span class="proj-selector-icon">◈</span>
-    <span class="proj-selector-name" id="projSelectorName">—</span>
+    <div style="flex:1;min-width:0;overflow:hidden;">
+      <div class="proj-selector-name" id="projSelectorName">—</div>
+      <div class="proc-indicator" id="procIndicator" style="display:none;"></div>
+    </div>
     <span class="proj-selector-arrow">▾</span>
   </div>
   <button class="hbtn hist" onclick="openHistory()">📋</button>
@@ -339,6 +373,18 @@ body.sort-mode .sort-handle{display:block;}
   <div class="stat"><div class="stat-val" id="fTotal">0</div><div class="stat-lbl">Tasti</div></div>
   <div class="stat"><div class="stat-val" id="fMax">00:00</div><div class="stat-lbl">Max</div></div>
   <div class="stat"><div class="stat-val" id="fRec">0</div><div class="stat-lbl">Rilev.</div></div>
+</div>
+
+<!-- PROCESS SCREEN -->
+<div class="process-screen" id="processScreen">
+  <div class="proc-header">
+    <button class="proc-back" onclick="closeProcessScreen()">← Indietro</button>
+    <div>
+      <div class="proc-title">SELEZIONA <span>PROCESSO</span></div>
+      <div class="proc-proj" id="procProjLabel">—</div>
+    </div>
+  </div>
+  <div class="proc-body" id="procBody"></div>
 </div>
 
 <!-- ADMIN PANEL -->
@@ -481,6 +527,8 @@ const sbAdmin = createClient(SUPABASE_URL, SUPABASE_ANON, {
 let currentUser    = null;
 let currentProject = null;
 let currentContract = null;
+let currentProcess  = null;
+let lookups = { azioni:[], unita:[], servomezzi:[], attrezzature:[], etichette:[] };
 let cards          = [];
 let logEntries     = [];
 let sortMode       = false;
@@ -528,10 +576,11 @@ document.getElementById('loginPassword').addEventListener('keydown',e=>{ if(e.ke
 
 async function doLogout(){
   await sb.auth.signOut();
-  currentUser=null; currentProject=null; cards=[]; logEntries=[];
+  currentUser=null; currentProject=null; currentContract=null; currentProcess=null; cards=[]; logEntries=[];
   stopAllTimers(); closeAllSheets();
   document.getElementById('adminScreen').classList.remove('show');
   document.getElementById('histScreen').classList.remove('show');
+  document.getElementById('processScreen').classList.remove('show');
   document.getElementById('splash').classList.add('hidden');
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('loginPassword').value='';
@@ -653,14 +702,227 @@ function renderProjects(projects){
 }
 
 async function selectProject(proj){
-  stopAllTimers(); currentProject=proj;
+  stopAllTimers(); currentProject=proj; currentProcess=null;
   document.getElementById('projSelectorName').textContent=proj.name;
+  document.getElementById('procIndicator').style.display='none';
   document.getElementById('splash').classList.add('hidden');
   closeAllSheets();
+  await openProcessScreen();
+}
+
+async function openProcessScreen(){
+  document.getElementById('procProjLabel').textContent=currentProject?.name||'—';
+  document.getElementById('processScreen').classList.add('show');
+  await loadProcesses();
+}
+
+function closeProcessScreen(){
+  document.getElementById('processScreen').classList.remove('show');
+  if(currentProject && currentProcess){
+    // torna all'app senza reset
+  } else {
+    // torna alla lista progetti
+    if(currentContract) selectContract(currentContract);
+    else loadContracts();
+  }
+}
+
+async function loadProcesses(){
+  const body=document.getElementById('procBody'); body.innerHTML='';
   showLoading('CARICAMENTO...');
-  try { await loadCards(); await loadLog(); }
+  try{
+    // carica lookup se non ancora caricati
+    if(!lookups.azioni.length) await loadLookups();
+    const {data:procs,error}=await sb.from('processes')
+      .select('id,azione_id,unita_id,servomezzo_id,attrezzatura_id,etichetta_id,azioni(name),unita(name),servomezzi(name),attrezzature(name),etichette(name)')
+      .eq('project_id',currentProject.id).order('created_at');
+    if(error)throw error;
+    renderProcesses(procs||[]);
+  }catch(e){toast('Errore: '+e.message);}
+  finally{hideLoading();}
+}
+
+async function loadLookups(){
+  const [a,u,s,at,e]=await Promise.all([
+    sb.from('azioni').select('id,name').order('name'),
+    sb.from('unita').select('id,name').order('name'),
+    sb.from('servomezzi').select('id,name').order('name'),
+    sb.from('attrezzature').select('id,name').order('name'),
+    sb.from('etichette').select('id,name').order('name'),
+  ]);
+  lookups.azioni       = a.data||[];
+  lookups.unita        = u.data||[];
+  lookups.servomezzi   = s.data||[];
+  lookups.attrezzature = at.data||[];
+  lookups.etichette    = e.data||[];
+}
+
+function renderProcesses(procs){
+  const body=document.getElementById('procBody'); body.innerHTML='';
+
+  // Bottone aggiungi processo
+  const addBtn=document.createElement('button'); addBtn.className='proc-add-btn';
+  addBtn.textContent='＋ Nuovo Processo'; addBtn.onclick=()=>toggleNewProcForm(body);
+  body.appendChild(addBtn);
+
+  // Form nuovo processo (nascosto)
+  const formWrap=document.createElement('div'); formWrap.id='newProcForm'; formWrap.style.display='none';
+  formWrap.innerHTML=buildProcForm();
+  body.appendChild(formWrap);
+
+  if(!procs.length){
+    const empty=document.createElement('div'); empty.className='proc-empty';
+    empty.innerHTML='Nessun processo.<br>Crea il primo con il tasto qui sopra.';
+    body.appendChild(empty);
+  } else {
+    procs.forEach(p=>{
+      const label=[p.azioni?.name,p.unita?.name,p.servomezzi?.name,p.attrezzature?.name].filter(Boolean).join(' · ');
+      const etLabel=p.etichette?.name?'🏷 '+p.etichette.name:'';
+      const item=document.createElement('div'); item.className='proc-item';
+      item.innerHTML=
+        '<div class="proc-item-body">'+
+          '<div class="proc-item-name">'+esc(label)+'</div>'+
+          (etLabel?'<div class="proc-item-detail">'+esc(etLabel)+'</div>':'')+
+        '</div>'+
+        '<div class="proc-item-del">✕</div>';
+      item.querySelector('.proc-item-body').addEventListener('click',()=>selectProcess(p,label));
+      item.querySelector('.proc-item-del').addEventListener('click',async e=>{
+        e.stopPropagation();
+        if(!confirm('Eliminare questo processo?'))return;
+        await sb.from('processes').delete().eq('id',p.id);
+        await loadProcesses();
+        toast('Processo eliminato');
+      });
+      body.appendChild(item);
+    });
+  }
+}
+
+function buildProcForm(){
+  const opts=(arr,req)=>(req?'<option value="">— seleziona —</option>':'<option value="">— nessuna —</option>')+arr.map(x=>'<option value="'+x.id+'">'+esc(x.name)+'</option>').join('');
+  const addBtnStyle='flex-shrink:0;background:var(--card);border:1px solid var(--border2);color:var(--dim);width:34px;height:34px;border-radius:6px;font-size:18px;cursor:pointer;';
+  const saveBtnStyle='flex-shrink:0;background:var(--cyan);border:none;color:#000;padding:0 12px;border-radius:6px;font-family:Rajdhani,sans-serif;font-size:12px;font-weight:700;cursor:pointer;';
+  const cancelBtnStyle='flex-shrink:0;background:var(--card);border:1px solid var(--border2);color:var(--dim);padding:0 10px;border-radius:6px;font-size:12px;cursor:pointer;';
+  let html='<div class="proc-form"><div class="proc-form-title">NUOVO PROCESSO</div>';
+  const fields=[
+    {label:'Azione',id:'pAzione',arr:lookups.azioni,req:true},
+    {label:'Unita',id:'pUnita',arr:lookups.unita,req:true},
+    {label:'Servomezzo',id:'pServomezzo',arr:lookups.servomezzi,req:true},
+    {label:'Attrezzatura',id:'pAttrezzatura',arr:lookups.attrezzature,req:true},
+    {label:'Etichetta',id:'pEtichetta',arr:lookups.etichette,req:false}
+  ];
+  fields.forEach(function(f){
+    html+='<div class="proc-field">';
+    html+='<label class="proc-label">'+f.label+(f.req?' *':'')+'</label>';
+    html+='<div style="display:flex;gap:6px;align-items:center;">';
+    html+='<select class="proc-select" id="'+f.id+'">'+opts(f.arr,f.req)+'</select>';
+    html+='<button type="button" style="'+addBtnStyle+'" onclick="addLookupInline(\''+f.id+'\')">+</button>';
+    html+='</div>';
+    html+='<div id="'+f.id+'_new" style="display:none;margin-top:6px;">';
+    html+='<div style="display:flex;gap:6px;">';
+    html+='<input type="text" id="'+f.id+'_input" class="proc-select" placeholder="Nuovo valore..." style="flex:1;">';
+    html+='<button type="button" style="'+saveBtnStyle+'" onclick="saveLookupInline(\''+f.id+'\')">SALVA</button>';
+    html+='<button type="button" style="'+cancelBtnStyle+'" onclick="cancelLookupInline(\''+f.id+'\')">X</button>';
+    html+='</div></div>';
+    html+='</div>';
+  });
+  html+='<button class="proc-submit" onclick="doCreateProcess()">CREA PROCESSO</button>';
+  html+='</div>';
+  return html;
+}
+
+// Mappa id select → tabella supabase
+const lookupMap = {
+  pAzione:'azioni', pUnita:'unita', pServomezzo:'servomezzi',
+  pAttrezzatura:'attrezzature', pEtichetta:'etichette'
+};
+const lookupKey = {
+  pAzione:'azioni', pUnita:'unita', pServomezzo:'servomezzi',
+  pAttrezzatura:'attrezzature', pEtichetta:'etichette'
+};
+
+function addLookupInline(selectId){
+  const wrap = document.getElementById(selectId+'_new');
+  if(!wrap) return;
+  wrap.style.display = wrap.style.display==='none' ? 'block' : 'none';
+  if(wrap.style.display==='block') setTimeout(()=>document.getElementById(selectId+'_input')?.focus(), 80);
+}
+
+function cancelLookupInline(selectId){
+  const wrap = document.getElementById(selectId+'_new');
+  if(wrap){ wrap.style.display='none'; const inp=document.getElementById(selectId+'_input'); if(inp)inp.value=''; }
+}
+
+async function saveLookupInline(selectId){
+  const inp = document.getElementById(selectId+'_input');
+  const name = inp?.value.trim();
+  if(!name){ inp?.focus(); return; }
+  const table = lookupMap[selectId];
+  if(!table) return;
+  try{
+    const {data,error} = await sb.from(table).insert({name}).select().single();
+    if(error) throw error;
+    // Aggiorna lookup locale
+    lookups[lookupKey[selectId]].push({id:data.id,name:data.name});
+    lookups[lookupKey[selectId]].sort((a,b)=>a.name.localeCompare(b.name));
+    // Aggiunge opzione al select e la seleziona
+    const sel = document.getElementById(selectId);
+    const opt = document.createElement('option'); opt.value=data.id; opt.textContent=data.name;
+    sel.appendChild(opt); sel.value=data.id;
+    // Chiude il form inline
+    cancelLookupInline(selectId);
+    toast('✓ "'+name+'" aggiunto');
+  }catch(e){
+    if(e.message.includes('unique') || e.message.includes('duplicate')){
+      toast('Esiste già: "'+name+'"');
+    } else {
+      toast('⚠ '+e.message);
+    }
+  }
+}
+
+function toggleNewProcForm(body){
+  const f=document.getElementById('newProcForm');
+  f.style.display=f.style.display==='none'?'block':'none';
+}
+
+async function doCreateProcess(){
+  const a=document.getElementById('pAzione')?.value;
+  const u=document.getElementById('pUnita')?.value;
+  const s=document.getElementById('pServomezzo')?.value;
+  const at=document.getElementById('pAttrezzatura')?.value;
+  const et=document.getElementById('pEtichetta')?.value||null;
+  if(!a||!u||!s||!at){toast('Compila Azione, Unità, Servomezzo e Attrezzatura');return;}
+  try{
+    const {error}=await sb.from('processes').insert({
+      project_id:currentProject.id, azione_id:a, unita_id:u,
+      servomezzo_id:s, attrezzatura_id:at, etichetta_id:et||null,
+      created_by:currentUser.id
+    });
+    if(error)throw error;
+    await loadProcesses(); toast('Processo creato');
+  }catch(e){toast('⚠ '+e.message);}
+}
+
+// Enter key su input inline
+document.addEventListener('keydown', e=>{
+  if(e.key!=='Enter') return;
+  const active = document.activeElement;
+  if(active && active.id && active.id.endsWith('_input')){
+    const selectId = active.id.replace('_input','');
+    saveLookupInline(selectId);
+  }
+});
+
+async function selectProcess(proc, label){
+  currentProcess={...proc, label};
+  document.getElementById('procIndicator').textContent=label;
+  document.getElementById('procIndicator').style.display='block';
+  document.getElementById('processScreen').classList.remove('show');
+  showLoading('CARICAMENTO...');
+  try{ await loadCards(); await loadLog(); }
   catch(e){ toast('Errore: '+e.message); }
-  finally { hideLoading(); setTimeout(()=>renderAll(),80); }
+  finally{ hideLoading(); setTimeout(()=>renderAll(),80); }
 }
 
 function openNewContractSheet(){
@@ -815,7 +1077,8 @@ async function toggleCard(id){
       const {data,error}=await sb.from('log_entries').insert({
         project_id:currentProject.id, card_id:c.id, card_name:c.name,
         user_id:currentUser.id, user_name:currentUser.name,
-        started_at:c.startedAt, ended_at:endTime.toISOString(), duration_ms:dur
+        started_at:c.startedAt, ended_at:endTime.toISOString(), duration_ms:dur,
+        process_id:currentProcess?.id||null
       }).select().single();
       if(error)throw error;
       logEntries.unshift(data);
@@ -850,9 +1113,11 @@ function goHome(){
   closeAllSheets();
   currentProject=null;
   currentContract=null;
+  currentProcess=null;
   cards=[]; logEntries=[];
   renderAll();
   document.getElementById('projSelectorName').textContent='—';
+  document.getElementById('procIndicator').style.display='none';
   loadContracts();
 }
 
