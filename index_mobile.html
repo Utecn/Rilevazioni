@@ -253,6 +253,12 @@ body.sort-mode .sort-handle{display:block;}
 .rec-time{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);white-space:nowrap;line-height:1.7;}
 .rec-user{font-size:9px;color:var(--purple);font-family:'Share Tech Mono',monospace;margin-top:1px;}
 .rec-dur{font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--orange);font-weight:700;white-space:nowrap;min-width:70px;text-align:right;}
+.rec-wrap{position:relative;overflow:hidden;border-bottom:1px solid var(--border);}
+.rec-del-bg{position:absolute;inset:0;background:var(--red);display:flex;align-items:center;justify-content:flex-end;padding-right:20px;opacity:0;pointer-events:none;transition:opacity .15s;}
+.rec-del-bg.show{opacity:1;pointer-events:all;}
+.rec-del-bg span{color:#fff;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;cursor:pointer;}
+.rec-row{display:flex;align-items:center;padding:10px 12px;gap:10px;position:relative;background:var(--bg);transition:transform .2s ease,background .2s;}
+.rec-row.swiped{background:rgba(255,51,85,.08);}
 .email-input{width:100%;padding:13px 12px;background:var(--card);border:1px solid var(--border2);border-radius:8px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:600;outline:none;margin-bottom:10px;transition:border-color .15s;}
 .email-input:focus{border-color:var(--green);}
 .exp-confirm{width:100%;padding:13px;background:var(--green);border:none;border-radius:8px;color:#000;font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;letter-spacing:2px;cursor:pointer;margin-bottom:8px;}
@@ -1270,6 +1276,58 @@ async function openHistory(){
 }
 function closeHistory(){ document.getElementById('histScreen').classList.remove('show'); }
 function getFilteredLog(){ const f=document.getElementById('filterSelect').value; return f?logEntries.filter(r=>r.card_name===f):[...logEntries]; }
+function attachSwipeDelete(wrap, row, delBg, entryId){
+  let startX=0, startY=0, dx=0, swiped=false, moving=false;
+  const THRESHOLD=80;
+
+  function onStart(x,y){ startX=x; startY=y; dx=0; moving=false; swiped=false; }
+  function onMove(x,y){
+    dx=x-startX;
+    const dy=Math.abs(y-startY);
+    if(!moving && dy>10 && Math.abs(dx)<dy) return; // scroll verticale
+    moving=true;
+    if(dx<0){ // swipe a sinistra
+      const shift=Math.min(Math.abs(dx),140);
+      row.style.transform='translateX(-'+shift+'px)';
+      if(shift>THRESHOLD){ delBg.classList.add('show'); row.classList.add('swiped'); swiped=true; }
+      else { delBg.classList.remove('show'); row.classList.remove('swiped'); swiped=false; }
+    }
+  }
+  function onEnd(){
+    if(!moving) return;
+    if(swiped){
+      row.style.transform='translateX(-120px)';
+      delBg.classList.add('show');
+    } else {
+      row.style.transform='';
+      delBg.classList.remove('show');
+      row.classList.remove('swiped');
+    }
+  }
+
+  row.addEventListener('touchstart',e=>{const t=e.touches[0];onStart(t.clientX,t.clientY);},{passive:true});
+  row.addEventListener('touchmove',e=>{if(moving)e.preventDefault();const t=e.touches[0];onMove(t.clientX,t.clientY);},{passive:false});
+  row.addEventListener('touchend',()=>onEnd(),{passive:true});
+
+  // Click fuori annulla lo swipe
+  document.addEventListener('touchstart',e=>{
+    if(swiped && !wrap.contains(e.target)){
+      row.style.transform=''; delBg.classList.remove('show'); row.classList.remove('swiped'); swiped=false;
+    }
+  },{passive:true});
+
+  // Bottone ELIMINA
+  delBg.querySelector('span').addEventListener('click', async()=>{
+    try{
+      const {error}=await sb.from('log_entries').delete().eq('id',entryId);
+      if(error) throw error;
+      wrap.style.transition='opacity .2s'; wrap.style.opacity='0';
+      setTimeout(()=>{ wrap.remove(); loadLog(); renderHistory(); },200);
+      toast('Rilevazione eliminata');
+    }catch(e){ toast('⚠ '+e.message); }
+  });
+}
+
 function renderHistory(){
   const body=document.getElementById('histBody'),filtered=getFilteredLog(),tot=filtered.length;
   document.getElementById('hsTot').textContent=tot;
@@ -1286,12 +1344,18 @@ function renderHistory(){
     const lbl=document.createElement('div'); lbl.className='day-label';
     lbl.textContent=day+' — '+byDay[day].length+' rilevazioni'; grp.appendChild(lbl);
     byDay[day].forEach(r=>{
+      const wrap=document.createElement('div'); wrap.className='rec-wrap';
+      const delBg=document.createElement('div'); delBg.className='rec-del-bg';
+      delBg.innerHTML='<span>ELIMINA</span>';
       const row=document.createElement('div'); row.className='rec-row';
       row.innerHTML='<div class="rec-name">'+esc(r.card_name)+'</div>'+
         '<div class="rec-info"><div class="rec-time">'+timeStr(r.started_at)+' → '+timeStr(r.ended_at)+'</div>'+
         '<div class="rec-user">'+esc(r.user_name||'')+'</div></div>'+
         '<div class="rec-dur">'+fmtS(r.duration_ms)+'</div>';
-      grp.appendChild(row);
+      attachSwipeDelete(wrap, row, delBg, r.id);
+      wrap.appendChild(delBg);
+      wrap.appendChild(row);
+      grp.appendChild(wrap);
     });
     body.appendChild(grp);
   });
