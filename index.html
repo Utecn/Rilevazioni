@@ -945,17 +945,31 @@ function switchAdminTab(tab){
 }
 async function loadAdminData(){ await Promise.all([loadUserList(),loadProjectAdminList()]); }
 
+let _showHidden = false;
+function toggleHidden(){ _showHidden = !_showHidden; loadUserList(); }
+
 async function loadUserList(){
-  const {data:profiles}=await sb.from('profiles').select('id,name,role,active').order('name');
+  const {data:profiles}=await sb.from('profiles').select('id,name,role,active,hidden').order('name');
   const list=document.getElementById('userList'); list.innerHTML='';
-  (profiles||[]).forEach(u=>{
+  
+  // Toolbar con toggle mostra nascosti
+  const hiddenCount = (profiles||[]).filter(u=>u.hidden && u.id!==currentUser.id).length;
+  const toolbar = document.createElement('div');
+  toolbar.style.cssText='display:flex;justify-content:flex-end;margin-bottom:10px;';
+  toolbar.innerHTML = hiddenCount > 0 
+    ? '<button onclick="toggleHidden()" style="background:var(--card2);border:1px solid var(--border2);color:var(--dim);padding:6px 12px;border-radius:6px;font-family:Rajdhani,sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;">'
+      + (_showHidden ? '👁 NASCONDI ARCHIVIATI' : '👁 MOSTRA ARCHIVIATI ('+hiddenCount+')') + '</button>'
+    : '';
+  list.appendChild(toolbar);
+  const visibleProfiles = (profiles||[]).filter(u => _showHidden ? true : !u.hidden);
+  visibleProfiles.forEach(u=>{
     const isSelf = u.id===currentUser.id;
     const card=document.createElement('div'); card.className='admin-card';
     card.innerHTML=
       '<div class="admin-card-header">'+
         '<div class="admin-card-info">'+
           '<div class="admin-card-name">'+esc(u.name)+(isSelf?' <span style="color:var(--dim);font-size:10px;">(tu)</span>':'')+'</div>'+
-          '<div class="admin-card-meta">'+(u.active?'attivo':'<span style="color:var(--red)">disattivato</span>')+'</div>'+
+          '<div class="admin-card-meta">'+(u.hidden?'<span style="color:var(--dim)">🗃 archiviato</span>':(u.active?'attivo':'<span style="color:var(--red)">disattivato</span>'))+'</div>'+
         '</div>'+
         '<span class="role-badge '+u.role+'">'+u.role+'</span>'+
         '<span style="color:var(--dim);font-size:16px;margin-left:6px;">'+(isSelf?'':'▾')+'</span>'+
@@ -975,7 +989,7 @@ async function loadUserList(){
           '<div class="user-actions">'+
             '<div class="user-action-btn save" data-uid="'+u.id+'">💾 SALVA</div>'+
             '<div class="user-action-btn '+(u.active?'toggle-off':'toggle-on')+'" data-uid="'+u.id+'" data-active="'+u.active+'">'+(u.active?'⏸ DISATTIVA':'▶ ATTIVA')+'</div>'+
-            '<div class="user-action-btn del" data-uid="'+u.id+'" data-name="'+esc(u.name)+'">🗑 ELIMINA</div>'+
+            '<div class="user-action-btn '+(u.hidden?'toggle-on':'del')+' hide-btn" data-uid="'+u.id+'" data-hidden="'+u.hidden+'">'+( u.hidden?'📤 RIPRISTINA':'🗃 ARCHIVIA')+'</div>'+
           '</div>'+
         '</div>'
       :'');
@@ -1006,13 +1020,14 @@ async function loadUserList(){
           await loadUserList(); toast(newActive?'Utente attivato':'Utente disattivato');
         }catch(e){toast('⚠ '+e.message);}
       });
-      card.querySelector('.user-action-btn.del').addEventListener('click', async e=>{
+      card.querySelector('.user-action-btn.hide-btn').addEventListener('click', async e=>{
         e.stopPropagation();
-        const name=e.currentTarget.dataset.name;
-        if(!confirm('Eliminare definitivamente "'+name+'"?\nLe sue rilevazioni rimarranno nel database.'))return;
+        const newHidden = e.currentTarget.dataset.hidden==='true'?false:true;
+        const msg = newHidden ? 'Archiviare "'+u.name+'"? Non comparirà più nella lista.' : 'Ripristinare "'+u.name+'" nella lista utenti?';
+        if(!confirm(msg))return;
         try{
-          await sb.from('profiles').delete().eq('id',u.id);
-          await loadUserList(); toast('Utente eliminato');
+          await sb.from('profiles').update({hidden:newHidden}).eq('id',u.id);
+          await loadUserList(); toast(newHidden?'Utente archiviato':'Utente ripristinato');
         }catch(e){toast('⚠ '+e.message);}
       });
     }
