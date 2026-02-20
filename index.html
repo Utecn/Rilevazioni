@@ -520,9 +520,9 @@ function afterLogin(){
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('splashUserName').textContent = currentUser.name;
   const isAdmin = currentUser.role==='admin';
-  document.getElementById('splashNewBtn').style.display    = isAdmin?'':'none';
+  document.getElementById('splashNewBtn').style.display    = '';
   document.getElementById('splashAdminBtn').style.display  = isAdmin?'':'none';
-  document.getElementById('projSheetNewBtn').style.display = isAdmin?'':'none';
+  document.getElementById('projSheetNewBtn').style.display = '';
   document.getElementById('clearBtn').style.display        = isAdmin?'':'none';
   loadSplash();
 }
@@ -818,6 +818,8 @@ async function doCreateProject(){
     if(error)throw error;
     const defaults=['01','02','03','04','05','06','07','08','09','10'];
     await sb.from('cards').insert(defaults.map((n,i)=>({project_id:data.id,name:n,position:i})));
+    // Aggiunge automaticamente il creatore come membro
+    await sb.from('project_members').insert({project_id:data.id, user_id:currentUser.id});
     closeAllSheets(); await loadSplash(); toast('Progetto "'+name+'" creato');
   } catch(e){
     const inp=document.getElementById('newProjInput'); inp.style.borderColor='var(--red)';
