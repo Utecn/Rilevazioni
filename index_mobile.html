@@ -306,7 +306,7 @@ body.sort-mode .sort-handle{display:block;}
   <div class="splash-logo">RILE<span>V</span>AZIONI</div>
   <div class="splash-user">Benvenuto, <strong id="splashUserName">—</strong></div>
   <div class="splash-title" id="splashTitle">Seleziona Appalto</div>
-  <div class="splash-sub" id="splashSub">Cliente · Magazzino · Brand</div>
+  <div class="splash-sub" id="splashSub">Cliente · Magazzino · Marchio</div>
   <div class="splash-actions">
     <button class="splash-back-btn" id="splashBackBtn" style="display:none" onclick="goBackToContracts()">← Appalti</button>
     <button class="splash-new-btn" id="splashNewBtn" onclick="openNewContractSheet()">＋ Nuovo</button>
@@ -460,7 +460,7 @@ body.sort-mode .sort-handle{display:block;}
 
 <div class="overlay" id="newContractOverlay"><div class="sheet">
   <div class="sheet-title">NUOVO APPALTO</div>
-  <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:12px;letter-spacing:1px;">CLIENTE · MAGAZZINO · BRAND</div>
+  <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:12px;letter-spacing:1px;">CLIENTE · MAGAZZINO · MARCHIO</div>
   <input class="text-input" id="newContractInput" type="text" maxlength="80" placeholder="es. Esselunga · Via Roma 1 · Coca-Cola">
   <button class="confirm-btn" onclick="doCreateContract()" style="background:var(--purple);">CREA APPALTO</button>
   <button class="sheet-cancel" onclick="closeSheet('newContractOverlay')">Annulla</button>
@@ -578,7 +578,7 @@ async function loadContracts(){
 function setSplashPhase(phase){
   const isCtr = phase==='contracts';
   document.getElementById('splashTitle').textContent = isCtr ? 'Seleziona Appalto' : (currentContract?.name||'Progetti');
-  document.getElementById('splashSub').textContent   = isCtr ? 'Cliente · Magazzino · Brand' : 'seleziona il progetto';
+  document.getElementById('splashSub').textContent   = isCtr ? 'Cliente · Magazzino · Marchio' : 'seleziona il progetto';
   document.getElementById('splashListLabel').textContent = isCtr ? 'APPALTI' : 'PROGETTI';
   document.getElementById('splashBackBtn').style.display = isCtr ? 'none' : '';
   const btn = document.getElementById('splashNewBtn');
