@@ -61,6 +61,16 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 .splash-admin-btn:active{opacity:.7;}
 .splash-logout{padding:12px 13px;background:var(--card2);border:1px solid var(--border2);border-radius:10px;color:var(--dim);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
 .splash-logout:active{opacity:.7;}
+.splash-back-btn{padding:12px 13px;background:var(--card2);border:1px solid var(--orange);border-radius:10px;color:var(--orange);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+.splash-back-btn:active{opacity:.7;}
+.contract-item{display:flex;align-items:center;background:var(--card);border:1px solid var(--border2);border-radius:8px;overflow:hidden;cursor:pointer;transition:border-color .15s;}
+.contract-item:hover{border-color:var(--purple);}
+.contract-item:active{opacity:.75;}
+.contract-item-body{flex:1;padding:14px 16px;}
+.contract-item-name{font-size:15px;font-weight:700;color:var(--text);}
+.contract-item-meta{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;}
+.contract-item-arrow{padding:0 16px;align-self:stretch;display:flex;align-items:center;color:var(--purple);font-size:16px;}
+.contract-item-del{padding:0 14px;align-self:stretch;display:flex;align-items:center;border-left:1px solid var(--border2);color:var(--red);font-size:16px;cursor:pointer;}
 .proj-list-wrap{width:100%;max-width:360px;}
 .proj-list-label{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:8px;font-family:'Share Tech Mono',monospace;padding-left:4px;}
 .proj-list{display:flex;flex-direction:column;gap:6px;}
@@ -295,15 +305,16 @@ body.sort-mode .sort-handle{display:block;}
 <div class="splash hidden" id="splash">
   <div class="splash-logo">RILE<span>V</span>AZIONI</div>
   <div class="splash-user">Benvenuto, <strong id="splashUserName">—</strong></div>
-  <div class="splash-title">Seleziona Progetto</div>
-  <div class="splash-sub">dati separati per ogni progetto</div>
+  <div class="splash-title" id="splashTitle">Seleziona Appalto</div>
+  <div class="splash-sub" id="splashSub">Cliente · Magazzino · Brand</div>
   <div class="splash-actions">
-    <button class="splash-new-btn" id="splashNewBtn" style="display:none" onclick="openNewProjSheet()">＋ Nuovo</button>
+    <button class="splash-back-btn" id="splashBackBtn" style="display:none" onclick="goBackToContracts()">← Appalti</button>
+    <button class="splash-new-btn" id="splashNewBtn" onclick="openNewContractSheet()">＋ Nuovo</button>
     <button class="splash-admin-btn" id="splashAdminBtn" style="display:none" onclick="openAdminPanel()">⚙ ADMIN</button>
     <button class="splash-logout" onclick="doLogout()">⏻ Esci</button>
   </div>
   <div class="proj-list-wrap">
-    <div class="proj-list-label">PROGETTI DISPONIBILI</div>
+    <div class="proj-list-label" id="splashListLabel">APPALTI</div>
     <div class="proj-list" id="splashList"></div>
   </div>
 </div>
@@ -362,6 +373,7 @@ body.sort-mode .sort-handle{display:block;}
     <div class="admin-section" id="adminProjects">
       <div class="add-form">
         <div class="add-form-title">NUOVO PROGETTO</div>
+        <select class="form-select" id="pContract" style="width:100%;margin-bottom:8px;"><option value="">— Seleziona Appalto —</option></select>
         <input class="form-input" id="pName" placeholder="Nome progetto" type="text" style="width:100%;margin-bottom:8px;">
         <button class="form-submit purple" onclick="adminCreateProject()">＋ CREA PROGETTO</button>
       </div>
@@ -446,6 +458,14 @@ body.sort-mode .sort-handle{display:block;}
   <p class="exp-note">Su mobile: condivisione nativa con file allegato.<br>Su PC: download diretto.</p>
 </div></div>
 
+<div class="overlay" id="newContractOverlay"><div class="sheet">
+  <div class="sheet-title">NUOVO APPALTO</div>
+  <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:12px;letter-spacing:1px;">CLIENTE · MAGAZZINO · BRAND</div>
+  <input class="text-input" id="newContractInput" type="text" maxlength="80" placeholder="es. Esselunga · Via Roma 1 · Coca-Cola">
+  <button class="confirm-btn" onclick="doCreateContract()" style="background:var(--purple);">CREA APPALTO</button>
+  <button class="sheet-cancel" onclick="closeSheet('newContractOverlay')">Annulla</button>
+</div></div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -460,6 +480,7 @@ const sbAdmin = createClient(SUPABASE_URL, SUPABASE_ANON, {
 
 let currentUser    = null;
 let currentProject = null;
+let currentContract = null;
 let cards          = [];
 let logEntries     = [];
 let sortMode       = false;
@@ -524,30 +545,97 @@ function afterLogin(){
   document.getElementById('splashAdminBtn').style.display  = isAdmin?'':'none';
   document.getElementById('projSheetNewBtn').style.display = '';
   document.getElementById('clearBtn').style.display        = isAdmin?'':'none';
-  loadSplash();
+  loadContracts();
 }
 
-/* ── SPLASH ── */
-async function loadSplash(){
+/* ══════════════════════════════════════
+   APPALTI (CONTRATTI) + PROGETTI
+══════════════════════════════════════ */
+
+// Alias per compatibilità con chiamate esistenti
+function loadSplash(){
+  if(currentContract) selectContract(currentContract);
+  else loadContracts();
+}
+
+async function loadContracts(){
+  setSplashPhase('contracts');
   showLoading('CARICAMENTO...');
   try {
-    const { data:projects, error } = await sb.from('projects')
-      .select('id,name,created_at').order('created_at',{ascending:false});
+    const { data:contracts, error } = await sb.from('contracts')
+      .select('id,name,created_at').order('name');
     if(error) throw error;
-    const counts = await Promise.all(projects.map(p =>
-      sb.from('log_entries').select('id',{count:'exact',head:true}).eq('project_id',p.id)
+    const counts = await Promise.all(contracts.map(c =>
+      sb.from('projects').select('id',{count:'exact',head:true}).eq('contract_id',c.id)
     ));
-    const enriched = projects.map((p,i)=>({...p, log_count: counts[i].count||0}));
-    renderSplash(enriched);
+    const enriched = contracts.map((c,i)=>({...c, proj_count: counts[i].count||0}));
+    renderContracts(enriched);
     document.getElementById('splash').classList.remove('hidden');
   } catch(e){ toast('Errore caricamento: '+e.message); }
   finally { hideLoading(); }
 }
 
-function renderSplash(projects){
+function setSplashPhase(phase){
+  const isCtr = phase==='contracts';
+  document.getElementById('splashTitle').textContent = isCtr ? 'Seleziona Appalto' : (currentContract?.name||'Progetti');
+  document.getElementById('splashSub').textContent   = isCtr ? 'Cliente · Magazzino · Brand' : 'seleziona il progetto';
+  document.getElementById('splashListLabel').textContent = isCtr ? 'APPALTI' : 'PROGETTI';
+  document.getElementById('splashBackBtn').style.display = isCtr ? 'none' : '';
+  const btn = document.getElementById('splashNewBtn');
+  if(isCtr){ btn.onclick=openNewContractSheet; btn.textContent='＋ Nuovo'; }
+  else      { btn.onclick=openNewProjSheet;     btn.textContent='＋ Progetto'; }
+}
+
+function renderContracts(contracts){
+  const list=document.getElementById('splashList'); list.innerHTML='';
+  if(!contracts.length){
+    list.innerHTML='<div class="proj-empty">Nessun appalto disponibile.<br>Crea il primo appalto.</div>';
+    return;
+  }
+  contracts.forEach(c=>{
+    const item=document.createElement('div'); item.className='contract-item';
+    item.innerHTML=
+      '<div class="contract-item-body">'+
+        '<div class="contract-item-name">'+esc(c.name)+'</div>'+
+        '<div class="contract-item-meta">'+c.proj_count+' progetti · '+dateStr(c.created_at)+'</div>'+
+      '</div>'+
+      (currentUser.role==='admin'?'<div class="contract-item-del">✕</div>':'<div class="contract-item-arrow">›</div>');
+    item.querySelector('.contract-item-body').addEventListener('click',()=>selectContract(c));
+    item.querySelector(currentUser.role==='admin'?'.contract-item-del':'.contract-item-arrow')
+      .addEventListener('click', currentUser.role==='admin'
+        ? e=>{e.stopPropagation();deleteContractConfirm(c.id,c.name);}
+        : ()=>selectContract(c));
+    list.appendChild(item);
+  });
+}
+
+async function selectContract(contract){
+  currentContract = contract;
+  setSplashPhase('projects');
+  showLoading('CARICAMENTO...');
+  try {
+    const { data:projects, error } = await sb.from('projects')
+      .select('id,name,created_at').eq('contract_id',contract.id).order('created_at',{ascending:false});
+    if(error) throw error;
+    const counts = await Promise.all(projects.map(p =>
+      sb.from('log_entries').select('id',{count:'exact',head:true}).eq('project_id',p.id)
+    ));
+    const enriched = projects.map((p,i)=>({...p, log_count: counts[i].count||0}));
+    renderProjects(enriched);
+    document.getElementById('splash').classList.remove('hidden');
+  } catch(e){ toast('Errore: '+e.message); }
+  finally { hideLoading(); }
+}
+
+function goBackToContracts(){
+  currentContract=null;
+  loadContracts();
+}
+
+function renderProjects(projects){
   const list=document.getElementById('splashList'); list.innerHTML='';
   if(!projects.length){
-    list.innerHTML='<div class="proj-empty">Nessun progetto disponibile.<br>'+(currentUser.role==='admin'?'Crea il primo progetto.':'Contatta un amministratore.')+'</div>';
+    list.innerHTML='<div class="proj-empty">Nessun progetto in questo appalto.<br>Crea il primo progetto.</div>';
     return;
   }
   projects.forEach(p=>{
@@ -573,6 +661,38 @@ async function selectProject(proj){
   try { await loadCards(); await loadLog(); }
   catch(e){ toast('Errore: '+e.message); }
   finally { hideLoading(); setTimeout(()=>renderAll(),80); }
+}
+
+function openNewContractSheet(){
+  document.getElementById('newContractInput').value='';
+  showSheet('newContractOverlay');
+  setTimeout(()=>document.getElementById('newContractInput').focus(),120);
+}
+
+async function doCreateContract(){
+  const name=document.getElementById('newContractInput').value.trim();
+  if(!name){document.getElementById('newContractInput').focus();return;}
+  try{
+    const {error}=await sb.from('contracts').insert({name,created_by:currentUser.id});
+    if(error)throw error;
+    closeSheet('newContractOverlay');
+    await loadContracts();
+    toast('Appalto "'+name+'" creato');
+  }catch(e){
+    const inp=document.getElementById('newContractInput'); inp.style.borderColor='var(--red)';
+    toast('⚠ '+e.message); setTimeout(()=>inp.style.borderColor='',2000);
+  }
+}
+
+async function deleteContractConfirm(id,name){
+  if(!confirm('Eliminare l'appalto "'+name+'" e tutti i suoi progetti?'))return;
+  try{
+    const {error}=await sb.from('contracts').delete().eq('id',id);
+    if(error)throw error;
+    if(currentContract?.id===id){currentContract=null;}
+    await loadContracts();
+    toast('Appalto eliminato');
+  }catch(e){toast('Errore: '+e.message);}
 }
 
 /* ── CARDS ── */
@@ -729,10 +849,11 @@ function goHome(){
   stopAllTimers();
   closeAllSheets();
   currentProject=null;
+  currentContract=null;
   cards=[]; logEntries=[];
   renderAll();
   document.getElementById('projSelectorName').textContent='—';
-  loadSplash();
+  loadContracts();
 }
 
 /* ── SORT MODE ── */
@@ -814,19 +935,20 @@ function openNewProjSheet(){ document.getElementById('newProjInput').value=''; s
 async function doCreateProject(){
   const name=document.getElementById('newProjInput').value.trim(); if(!name){document.getElementById('newProjInput').focus();return;}
   try {
-    const {data,error}=await sb.from('projects').insert({name,created_by:currentUser.id}).select().single();
+    const {data,error}=await sb.from('projects').insert({name,created_by:currentUser.id,contract_id:currentContract?.id||null}).select().single();
     if(error)throw error;
     const defaults=['01','02','03','04','05','06','07','08','09','10'];
     await sb.from('cards').insert(defaults.map((n,i)=>({project_id:data.id,name:n,position:i})));
     // Aggiunge automaticamente il creatore come membro
     await sb.from('project_members').insert({project_id:data.id, user_id:currentUser.id});
-    closeAllSheets(); await loadSplash(); toast('Progetto "'+name+'" creato');
+    closeAllSheets(); if(currentContract)await selectContract(currentContract);else await loadContracts(); toast('Progetto "'+name+'" creato');
   } catch(e){
     const inp=document.getElementById('newProjInput'); inp.style.borderColor='var(--red)';
     toast('⚠ '+e.message); setTimeout(()=>inp.style.borderColor='',2000);
   }
 }
 document.getElementById('newProjInput').addEventListener('keydown',e=>{if(e.key==='Enter')doCreateProject();});
+document.getElementById('newContractInput').addEventListener('keydown',e=>{if(e.key==='Enter')doCreateContract();});
 async function doRenameProj(){
   const name=document.getElementById('renameProjInput').value.trim(); if(!name){document.getElementById('renameProjInput').focus();return;}
   try {
@@ -844,7 +966,7 @@ async function deleteProjConfirm(id,name){
   try {
     const {error}=await sb.from('projects').delete().eq('id',id); if(error)throw error;
     if(currentProject?.id===id){currentProject=null;stopAllTimers();cards=[];logEntries=[];renderAll();document.getElementById('projSelectorName').textContent='—';document.getElementById('splash').classList.remove('hidden');}
-    await loadSplash(); toast('Progetto eliminato');
+    if(currentContract)await selectContract(currentContract);else await loadContracts(); toast('Progetto eliminato');
   } catch(e){toast('Errore: '+e.message);}
 }
 
@@ -945,7 +1067,13 @@ function switchAdminTab(tab){
   document.getElementById('adminUsers').classList.toggle('active',tab==='users');
   document.getElementById('adminProjects').classList.toggle('active',tab==='projects');
 }
-async function loadAdminData(){ await Promise.all([loadUserList(),loadProjectAdminList()]); }
+async function loadAdminData(){ await Promise.all([loadUserList(),loadProjectAdminList(),loadContractSelect()]); }
+
+async function loadContractSelect(){
+  const {data:contracts}=await sb.from('contracts').select('id,name').order('name');
+  const sel=document.getElementById('pContract');
+  sel.innerHTML='<option value="">— Seleziona Appalto —</option>'+(contracts||[]).map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('');
+}
 
 let _showHidden = false;
 function toggleHidden(){ _showHidden = !_showHidden; loadUserList(); }
@@ -1060,7 +1188,7 @@ async function createUser(){
 
 async function loadProjectAdminList(){
   const [{data:projects},{data:allProfiles}]=await Promise.all([
-    sb.from('projects').select('id,name,created_at').order('created_at',{ascending:false}),
+    sb.from('projects').select('id,name,created_at,contracts(name)').order('created_at',{ascending:false}),
     sb.from('profiles').select('id,name,role').eq('active',true).eq('role','operatore')
   ]);
   const list=document.getElementById('projectAdminList'); list.innerHTML='';
@@ -1071,7 +1199,7 @@ async function loadProjectAdminList(){
     const card=document.createElement('div'); card.className='proj-admin-card';
     card.innerHTML=
       '<div class="proj-admin-header"><div><div class="proj-admin-name">'+esc(p.name)+'</div>'+
-      '<div class="proj-admin-meta">'+mList.length+' membri</div></div><span class="proj-admin-chevron">▾</span></div>'+
+      '<div class="proj-admin-meta">'+(p.contracts?.name||'—')+' · '+mList.length+' membri</div></div><span class="proj-admin-chevron">▾</span></div>'+
       '<div class="proj-admin-body">'+
         '<div class="members-title">MEMBRI</div>'+
         '<div class="mem-list">'+
@@ -1113,11 +1241,14 @@ async function loadProjectAdminList(){
 
 async function adminCreateProject(){
   const name=document.getElementById('pName').value.trim(); if(!name){toast('Inserisci il nome');return;}
+  const contractId=document.getElementById('pContract').value; if(!contractId){toast('Seleziona un appalto');return;}
   try{
-    const{error}=await sb.from('projects').insert({name,created_by:currentUser.id});if(error)throw error;
-    const {data:proj}=await sb.from('projects').select('id').eq('name',name).single();
+    const {data:proj,error}=await sb.from('projects').insert({name,created_by:currentUser.id,contract_id:contractId}).select().single();
+    if(error)throw error;
     await sb.from('cards').insert(['01','02','03','04','05','06','07','08','09','10'].map((n,i)=>({project_id:proj.id,name:n,position:i})));
-    document.getElementById('pName').value='';await loadProjectAdminList();toast('Progetto creato');
+    document.getElementById('pName').value='';
+    await loadProjectAdminList(); await loadContractSelect();
+    toast('Progetto creato');
   }catch(e){toast('⚠ '+e.message);}
 }
 
@@ -1125,10 +1256,10 @@ async function adminCreateProject(){
 function showSheet(id){ document.getElementById(id).classList.add('show'); }
 function closeSheet(id){ document.getElementById(id).classList.remove('show'); }
 function closeAllSheets(){
-  ['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay']
+  ['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','newContractOverlay']
   .forEach(id=>document.getElementById(id).classList.remove('show'));
 }
-['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay']
+['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','newContractOverlay']
 .forEach(id=>document.getElementById(id).addEventListener('click',e=>{if(e.target.id===id)closeSheet(id);}));
 
 /* ── TOAST / LOADING ── */
