@@ -984,10 +984,10 @@ async function loadUserList(){
                 '<option value="admin"'+(u.role==='admin'?' selected':'')+'>Admin</option>'+
               '</select>'+
             '</div>'+
-            '<input class="user-input" data-field="password" type="password" placeholder="Nuova password (lascia vuoto per non cambiare)">'+
           '</div>'+
           '<div class="user-actions">'+
             '<div class="user-action-btn save" data-uid="'+u.id+'">💾 SALVA</div>'+
+            '<div class="user-action-btn" style="border-color:var(--dim);color:var(--dim);" data-email-reset data-uid="'+u.id+'">🔑 RESET PW</div>'+
             '<div class="user-action-btn '+(u.active?'toggle-off':'toggle-on')+'" data-uid="'+u.id+'" data-active="'+u.active+'">'+(u.active?'⏸ DISATTIVA':'▶ ATTIVA')+'</div>'+
             '<div class="user-action-btn '+(u.hidden?'toggle-on':'del')+' hide-btn" data-uid="'+u.id+'" data-hidden="'+u.hidden+'">'+( u.hidden?'📤 RIPRISTINA':'🗃 ARCHIVIA')+'</div>'+
           '</div>'+
@@ -999,17 +999,20 @@ async function loadUserList(){
         e.stopPropagation();
         const name=card.querySelector('[data-field="name"]').value.trim();
         const role=card.querySelector('[data-field="role"]').value;
-        const pw=card.querySelector('[data-field="password"]').value;
         if(!name){toast('Nome obbligatorio');return;}
         try{
           await sb.from('profiles').update({name,role}).eq('id',u.id);
-          if(pw){
-            if(pw.length<6){toast('Password minimo 6 caratteri');return;}
-            const {error}=await sbAdmin.auth.admin?.updateUserById?.(u.id,{password:pw})
-              || await sbAdmin.rpc('reset_user_password',{uid:u.id,new_pw:pw});
-            if(error)throw error;
-          }
+
           await loadUserList(); toast('Utente aggiornato');
+        }catch(e){toast('⚠ '+e.message);}
+      });
+      card.querySelector('[data-email-reset]').addEventListener('click', async e=>{
+        e.stopPropagation();
+        if(!confirm('Inviare email di reset password a '+u.email+'?'))return;
+        try{
+          const {error}=await sb.auth.resetPasswordForEmail(u.email);
+          if(error)throw error;
+          toast('✓ Email di reset inviata a '+u.email);
         }catch(e){toast('⚠ '+e.message);}
       });
       card.querySelector('.user-action-btn[data-active]').addEventListener('click', async e=>{
