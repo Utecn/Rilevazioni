@@ -294,6 +294,7 @@ body.sort-mode .sort-handle{display:block;}
 .proc-field{margin-bottom:10px;}
 .proc-label{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;display:block;margin-bottom:5px;}
 .proc-select{width:100%;padding:10px 12px;background:var(--card);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;outline:none;}
+.proc-select[type=text],.proc-lookup-input{text-transform:uppercase;}
 .proc-select:focus{border-color:var(--cyan);}
 .proc-submit{width:100%;padding:11px;background:var(--cyan);border:none;border-radius:6px;color:#000;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;cursor:pointer;margin-top:4px;}
 .proc-submit:active{opacity:.8;}
@@ -820,7 +821,7 @@ function buildProcForm(){
     html+='</div>';
     html+='<div id="'+f.id+'_new" style="display:none;margin-top:6px;">';
     html+='<div style="display:flex;gap:6px;">';
-    html+='<input type="text" id="'+f.id+'_input" class="proc-select" placeholder="Nuovo valore..." style="flex:1;">';
+    html+='<input type="text" id="'+f.id+'_input" class="proc-select" placeholder="NUOVO VALORE..." style="flex:1;text-transform:uppercase;">';
     html+='<button type="button" style="'+saveBtnStyle+'" onclick="saveLookupInline(\''+f.id+'\')">SALVA</button>';
     html+='<button type="button" style="'+cancelBtnStyle+'" onclick="cancelLookupInline(\''+f.id+'\')">X</button>';
     html+='</div></div>';
@@ -855,7 +856,7 @@ function cancelLookupInline(selectId){
 
 async function saveLookupInline(selectId){
   const inp = document.getElementById(selectId+'_input');
-  const name = inp?.value.trim();
+  const name = inp?.value.trim().toUpperCase();
   if(!name){ inp?.focus(); return; }
   const table = lookupMap[selectId];
   if(!table) return;
@@ -920,7 +921,19 @@ async function selectProcess(proc, label){
   document.getElementById('procIndicator').style.display='block';
   document.getElementById('processScreen').classList.remove('show');
   showLoading('CARICAMENTO...');
-  try{ await loadCards(); await loadLog(); }
+  try{
+    await loadCards();
+    // Se non ci sono tasti, crea i 10 default
+    if(cards.length===0){
+      const defaults=['01','02','03','04','05','06','07','08','09','10'];
+      const {error}=await sb.from('cards').insert(
+        defaults.map((n,i)=>({project_id:currentProject.id,name:n,position:i}))
+      );
+      if(error) throw error;
+      await loadCards();
+    }
+    await loadLog();
+  }
   catch(e){ toast('Errore: '+e.message); }
   finally{ hideLoading(); setTimeout(()=>renderAll(),80); }
 }
