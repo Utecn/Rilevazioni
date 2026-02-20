@@ -1277,20 +1277,30 @@ function hideLoading(){ document.getElementById('loadingScreen').classList.add('
 document.addEventListener('contextmenu',e=>e.preventDefault());
 
 /* ── BOOT ── */
+function showLogin(){
+  hideLoading();
+  document.getElementById('loginScreen').classList.remove('hidden');
+}
+
 (async function boot(){
   showLoading('CONNESSIONE...');
+  // Timeout di sicurezza: se dopo 8 secondi non è successo nulla, mostra il login
+  const safetyTimer = setTimeout(()=>{ console.warn('Boot timeout'); showLogin(); }, 8000);
   try {
-    const { data: { session } } = await sb.auth.getSession();
+    const { data: { session }, error } = await sb.auth.getSession();
+    if(error) throw error;
     if(session){
-      const {data:prof}=await sb.from('profiles').select('name,role,active').eq('id',session.user.id).single();
+      const {data:prof, error:pe}=await sb.from('profiles').select('name,role,active').eq('id',session.user.id).single();
+      if(pe) throw pe;
       if(prof?.active){
         currentUser={id:session.user.id,email:session.user.email,name:prof.name,role:prof.role};
+        clearTimeout(safetyTimer);
         hideLoading(); afterLogin(); return;
       }
     }
-  } catch(e){}
-  hideLoading();
-  document.getElementById('loginScreen').classList.remove('hidden');
+  } catch(e){ console.error('Boot error:', e); }
+  clearTimeout(safetyTimer);
+  showLogin();
 })();
 </script>
 </body>
