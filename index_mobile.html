@@ -766,13 +766,13 @@ function renderProjects(projects){
     if(canManage){
       const teamBtn = item.querySelector('.proj-item-team');
       if(teamBtn){
+        teamBtn.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
         teamBtn.addEventListener('click',e=>{e.stopPropagation();openMembersScreen(p);});
-        teamBtn.addEventListener('touchend',e=>{e.stopPropagation();e.preventDefault();openMembersScreen(p);},{passive:false});
       }
       const delBtn = item.querySelector('.proj-item-del');
       if(delBtn){
+        delBtn.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
         delBtn.addEventListener('click',e=>{e.stopPropagation();deleteProjConfirm(p.id,p.name);});
-        delBtn.addEventListener('touchend',e=>{e.stopPropagation();e.preventDefault();deleteProjConfirm(p.id,p.name);},{passive:false});
       }
     }
     list.appendChild(item);
