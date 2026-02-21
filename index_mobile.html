@@ -671,12 +671,19 @@ async function selectContract(contract){
   showLoading('CARICAMENTO...');
   try {
     const { data:projects, error } = await sb.from('projects')
-      .select('id,name,created_at,responsible_id,profiles!projects_responsible_id_fkey(name)').eq('contract_id',contract.id).order('created_at',{ascending:false});
+      .select('id,name,created_at,responsible_id').eq('contract_id',contract.id).order('created_at',{ascending:false});
     if(error) throw error;
     const counts = await Promise.all(projects.map(p =>
       sb.from('log_entries').select('id',{count:'exact',head:true}).eq('project_id',p.id)
     ));
-    const enriched = projects.map((p,i)=>({...p, log_count: counts[i].count||0}));
+    // Fetch responsible names separately
+    const respIds=[...new Set((projects||[]).map(p=>p.responsible_id).filter(Boolean))];
+    let respMap={};
+    if(respIds.length){
+      const {data:resps}=await sb.from('profiles').select('id,name').in('id',respIds);
+      (resps||[]).forEach(r=>respMap[r.id]=r.name);
+    }
+    const enriched = projects.map((p,i)=>({...p, log_count: counts[i].count||0, responsible_name: respMap[p.responsible_id]||'—'}));
     renderProjects(enriched);
     document.getElementById('splash').classList.remove('hidden');
   } catch(e){ toast('Errore: '+e.message); }
@@ -1565,10 +1572,17 @@ async function createUser(){
 
 async function loadProjectAdminList(){
   const [{data:projects},{data:allProfiles}]=await Promise.all([
-    sb.from('projects').select('id,name,created_at,responsible_id,contracts(name),profiles!projects_responsible_id_fkey(name)').order('created_at',{ascending:false}),
+    sb.from('projects').select('id,name,created_at,responsible_id,contracts(name)').order('created_at',{ascending:false}),
     sb.from('profiles').select('id,name,role').eq('active',true).eq('role','operatore')
   ]);
   const list=document.getElementById('projectAdminList'); list.innerHTML='';
+  // Build responsible name map
+  const allRespIds=[...new Set((projects||[]).map(p=>p.responsible_id).filter(Boolean))];
+  let adminRespMap={};
+  if(allRespIds.length){
+    const {data:rr}=await sb.from('profiles').select('id,name').in('id',allRespIds);
+    (rr||[]).forEach(r=>adminRespMap[r.id]=r.name);
+  }
   for(const p of (projects||[])){
     const {data:members}=await sb.from('project_members').select('user_id,profiles(id,name)').eq('project_id',p.id);
     const mList=members?.map(m=>m.profiles)||[];
@@ -1576,7 +1590,7 @@ async function loadProjectAdminList(){
     const card=document.createElement('div'); card.className='proj-admin-card';
     card.innerHTML=
       '<div class="proj-admin-header"><div><div class="proj-admin-name">'+esc(p.name)+'</div>'+
-      '<div class="proj-admin-meta">'+(p.contracts?.name||'—')+' · resp: '+(p.profiles?.name||'—')+' · '+mList.length+' membri</div></div><span class="proj-admin-chevron">▾</span></div>'+
+      '<div class="proj-admin-meta">'+(p.contracts?.name||'—')+' · resp: '+(adminRespMap[p.responsible_id]||'—')+' · '+mList.length+' membri</div></div><span class="proj-admin-chevron">▾</span></div>'+
       '<div class="proj-admin-body">'+
         '<div class="members-title">MEMBRI</div>'+
         '<div class="mem-list">'+
