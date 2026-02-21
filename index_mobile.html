@@ -79,7 +79,7 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 .proj-item-body{flex:1;padding:12px 14px;}
 .proj-item-name{font-size:15px;font-weight:700;color:var(--text);}
 .proj-item-meta{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:2px;}
-.proj-item-del{padding:0 14px;align-self:stretch;display:flex;align-items:center;border-left:1px solid var(--border2);color:var(--red);font-size:16px;cursor:pointer;}
+.proj-item-del{padding:0 14px;align-self:stretch;display:flex;align-items:center;border-left:1px solid var(--border2);color:var(--red);font-size:16px;cursor:pointer;touch-action:manipulation;}
 .proj-empty{padding:30px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);line-height:2;}
 
 /* ── HEADER ── */
@@ -276,7 +276,7 @@ body.sort-mode .sort-handle{display:block;}
 .proj-divider{border:none;border-top:1px solid var(--border2);margin:12px 0;}
 
 /* ── MEMBERS PANEL ── */
-.proj-item-team{padding:0 12px;align-self:stretch;display:flex;align-items:center;border-left:1px solid var(--border2);color:var(--purple);font-size:15px;cursor:pointer;}
+.proj-item-team{padding:0 14px;align-self:stretch;display:flex;align-items:center;border-left:1px solid var(--border2);color:var(--purple);font-size:18px;font-weight:700;cursor:pointer;touch-action:manipulation;}
 .proj-item-team:active{opacity:.6;}
 .members-screen{position:fixed;inset:0;z-index:560;background:var(--bg);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
 .members-screen.show{transform:translateX(0);}
@@ -765,19 +765,19 @@ function renderProjects(projects){
           ' · '+p.log_count+' rilev.'+
         '</div>'+
       '</div>'+
-      (canManage ? '<div class="proj-item-team" title="Gestisci risorse">👥</div>' : '')+
+      (canManage ? '<div class="proj-item-team">⚑</div>' : '')+
       (canManage ? '<div class="proj-item-del">✕</div>' : '');
-    item.querySelector('.proj-item-body').addEventListener('click',()=>selectProject(p));
+    item.querySelector('.proj-item-body').addEventListener('pointerup',()=>selectProject(p));
     if(canManage){
       const teamBtn = item.querySelector('.proj-item-team');
       if(teamBtn){
-        teamBtn.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
-        teamBtn.addEventListener('click',e=>{e.stopPropagation();openMembersScreen(p);});
+        teamBtn.addEventListener('pointerdown',e=>{e.stopPropagation();});
+        teamBtn.addEventListener('pointerup',e=>{e.stopPropagation();openMembersScreen(p);});
       }
       const delBtn = item.querySelector('.proj-item-del');
       if(delBtn){
-        delBtn.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
-        delBtn.addEventListener('click',e=>{e.stopPropagation();deleteProjConfirm(p.id,p.name);});
+        delBtn.addEventListener('pointerdown',e=>{e.stopPropagation();});
+        delBtn.addEventListener('pointerup',e=>{e.stopPropagation();deleteProjConfirm(p.id,p.name);});
       }
     }
     list.appendChild(item);
