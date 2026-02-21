@@ -719,12 +719,16 @@ function renderProjects(projects){
   }
   projects.forEach(p=>{
     const item=document.createElement('div'); item.className='proj-item';
+    const isResp = p.responsible_id === currentUser.id;
     item.innerHTML=
       '<div class="proj-item-body">'+
         '<div class="proj-item-name">'+esc(p.name)+'</div>'+
-        '<div class="proj-item-meta">'+p.log_count+' rilevazioni · '+dateStr(p.created_at)+'</div>'+
+        '<div class="proj-item-meta">'+
+          (isResp ? '<span style="color:var(--orange)">● tu</span>' : esc(p.responsible_name||'—'))+
+          ' · '+p.log_count+' rilev.'+
+        '</div>'+
       '</div>'+
-      (currentUser.role==='admin'?'<div class="proj-item-del">✕</div>':'');
+      ((currentUser.role==='admin'||isResp)?'<div class="proj-item-del">✕</div>':'');
     item.querySelector('.proj-item-body').addEventListener('click',()=>selectProject(p));
     if(currentUser.role==='admin'||p.responsible_id===currentUser.id) item.querySelector('.proj-item-del')?.addEventListener('click',e=>{e.stopPropagation();deleteProjConfirm(p.id,p.name);});
     list.appendChild(item);
