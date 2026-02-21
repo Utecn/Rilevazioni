@@ -492,6 +492,10 @@ body.sort-mode .sort-handle{display:block;}
 <div class="overlay" id="newProjOverlay"><div class="sheet">
   <div class="sheet-title">NUOVO PROGETTO</div>
   <input class="text-input" id="newProjInput" type="text" maxlength="40" placeholder="Nome progetto...">
+  <div style="margin-bottom:12px;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">RESPONSABILE</div>
+    <select class="text-input" id="newProjResponsible" style="padding:10px 12px;font-size:14px;"></select>
+  </div>
   <button class="confirm-btn" onclick="doCreateProject()" style="background:var(--purple);">CREA PROGETTO</button>
   <button class="sheet-cancel" onclick="closeSheet('newProjOverlay')">Annulla</button>
 </div></div>
@@ -1231,11 +1235,23 @@ function renderProjSheet(projects){
   const note=document.createElement('div'); note.style.cssText='font-size:10px;color:var(--dim);font-family:\'Share Tech Mono\',monospace;text-align:center;padding:4px 0 8px;';
   note.textContent='tap sul progetto attivo per rinominarlo'; wrap.appendChild(note);
 }
-function openNewProjSheet(){ document.getElementById('newProjInput').value=''; showSheet('newProjOverlay'); setTimeout(()=>document.getElementById('newProjInput').focus(),120); }
+async function openNewProjSheet(){
+  document.getElementById('newProjInput').value='';
+  // Popola il select dei responsabili
+  const sel = document.getElementById('newProjResponsible');
+  sel.innerHTML = '<option value="">— caricamento —</option>';
+  const {data:users} = await sb.from('profiles').select('id,name').eq('active',true).eq('hidden',false).order('name');
+  sel.innerHTML = (users||[]).map(u=>
+    '<option value="'+u.id+'"'+(u.id===currentUser.id?' selected':'')+'>'+esc(u.name)+'</option>'
+  ).join('');
+  showSheet('newProjOverlay');
+  setTimeout(()=>document.getElementById('newProjInput').focus(),120);
+}
 async function doCreateProject(){
   const name=document.getElementById('newProjInput').value.trim(); if(!name){document.getElementById('newProjInput').focus();return;}
   try {
-    const {data,error}=await sb.from('projects').insert({name,created_by:currentUser.id,responsible_id:currentUser.id,contract_id:currentContract?.id||null}).select().single();
+    const responsibleId = document.getElementById('newProjResponsible')?.value || currentUser.id;
+    const {data,error}=await sb.from('projects').insert({name,created_by:currentUser.id,responsible_id:responsibleId,contract_id:currentContract?.id||null}).select().single();
     if(error)throw error;
     const defaults=['01','02','03','04','05','06','07','08','09','10'];
     await sb.from('cards').insert(defaults.map((n,i)=>({project_id:data.id,name:n,position:i})));
