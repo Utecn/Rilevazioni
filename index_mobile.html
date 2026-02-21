@@ -275,6 +275,24 @@ body.sort-mode .sort-handle{display:block;}
 .proj-sheet-del{padding:0 14px;align-self:stretch;display:flex;align-items:center;border-left:1px solid var(--border2);color:var(--red);font-size:16px;cursor:pointer;}
 .proj-divider{border:none;border-top:1px solid var(--border2);margin:12px 0;}
 
+/* ── MEMBERS PANEL ── */
+.proj-item-team{padding:0 12px;align-self:stretch;display:flex;align-items:center;border-left:1px solid var(--border2);color:var(--purple);font-size:15px;cursor:pointer;}
+.proj-item-team:active{opacity:.6;}
+.members-screen{position:fixed;inset:0;z-index:560;background:var(--bg);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
+.members-screen.show{transform:translateX(0);}
+.members-header{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--border);}
+.members-body{flex:1;overflow-y:auto;padding:14px;}
+.members-section-title{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:8px;margin-top:16px;}
+.members-section-title:first-child{margin-top:0;}
+.member-chip{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;margin-bottom:6px;}
+.member-chip-name{font-size:14px;font-weight:600;}
+.member-chip-remove{color:var(--red);font-size:16px;cursor:pointer;padding:0 4px;}
+.member-chip-remove:active{opacity:.6;}
+.member-add-row{display:flex;gap:8px;margin-top:8px;}
+.member-add-select{flex:1;padding:10px 12px;background:var(--card);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;outline:none;}
+.member-add-btn{padding:10px 16px;background:var(--purple);border:none;border-radius:6px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+.member-add-btn:active{opacity:.8;}
+
 /* ── PROCESS SCREEN ── */
 .process-screen{position:fixed;inset:0;z-index:550;background:var(--bg);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
 .process-screen.show{transform:translateX(0);}
@@ -380,6 +398,18 @@ body.sort-mode .sort-handle{display:block;}
   <div class="stat"><div class="stat-val" id="fTotal">0</div><div class="stat-lbl">Tasti</div></div>
   <div class="stat"><div class="stat-val" id="fMax">00:00</div><div class="stat-lbl">Max</div></div>
   <div class="stat"><div class="stat-val" id="fRec">0</div><div class="stat-lbl">Rilev.</div></div>
+</div>
+
+<!-- MEMBERS SCREEN -->
+<div class="members-screen" id="membersScreen">
+  <div class="members-header">
+    <button class="proc-back" onclick="closeMembersScreen()">← Indietro</button>
+    <div>
+      <div class="proc-title">RISORSE <span style="color:var(--purple)">PROGETTO</span></div>
+      <div class="proc-proj" id="membersProjLabel">—</div>
+    </div>
+  </div>
+  <div class="members-body" id="membersBody"></div>
 </div>
 
 <!-- PROCESS SCREEN -->
@@ -604,6 +634,7 @@ async function doLogout(){
   document.getElementById('adminScreen').classList.remove('show');
   document.getElementById('histScreen').classList.remove('show');
   document.getElementById('processScreen').classList.remove('show');
+  document.getElementById('membersScreen').classList.remove('show');
   document.getElementById('splash').classList.add('hidden');
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('loginPassword').value='';
@@ -720,6 +751,7 @@ function renderProjects(projects){
   projects.forEach(p=>{
     const item=document.createElement('div'); item.className='proj-item';
     const isResp = p.responsible_id === currentUser.id;
+    const canManage = currentUser.role==='admin' || isResp;
     item.innerHTML=
       '<div class="proj-item-body">'+
         '<div class="proj-item-name">'+esc(p.name)+'</div>'+
@@ -728,9 +760,11 @@ function renderProjects(projects){
           ' · '+p.log_count+' rilev.'+
         '</div>'+
       '</div>'+
-      ((currentUser.role==='admin'||isResp)?'<div class="proj-item-del">✕</div>':'');
+      (canManage ? '<div class="proj-item-team" title="Gestisci risorse">👥</div>' : '')+
+      (canManage ? '<div class="proj-item-del">✕</div>' : '');
     item.querySelector('.proj-item-body').addEventListener('click',()=>selectProject(p));
-    if(currentUser.role==='admin'||p.responsible_id===currentUser.id) item.querySelector('.proj-item-del')?.addEventListener('click',e=>{e.stopPropagation();deleteProjConfirm(p.id,p.name);});
+    if(canManage) item.querySelector('.proj-item-team')?.addEventListener('click',e=>{e.stopPropagation();openMembersScreen(p);});
+    if(canManage) item.querySelector('.proj-item-del')?.addEventListener('click',e=>{e.stopPropagation();deleteProjConfirm(p.id,p.name);});
     list.appendChild(item);
   });
 }
@@ -752,6 +786,7 @@ async function openProcessScreen(){
 
 function closeProcessScreen(){
   document.getElementById('processScreen').classList.remove('show');
+  document.getElementById('membersScreen').classList.remove('show');
   if(currentProject && currentProcess){
     // torna all'app senza reset
   } else {
@@ -956,6 +991,7 @@ async function selectProcess(proc, label){
   document.getElementById('procIndicator').textContent=label;
   document.getElementById('procIndicator').style.display='block';
   document.getElementById('processScreen').classList.remove('show');
+  document.getElementById('membersScreen').classList.remove('show');
   showLoading('CARICAMENTO...');
   try{
     await loadCards();
@@ -1160,6 +1196,97 @@ function updateFooter(){
   document.getElementById('fTotal').textContent=cards.length;
   document.getElementById('fRec').textContent=logEntries.length;
   document.getElementById('fActive').textContent=cards.filter(c=>c.running).length;
+}
+
+/* ── MEMBERS SCREEN ── */
+async function openMembersScreen(proj){
+  document.getElementById('membersProjLabel').textContent = proj.name;
+  document.getElementById('membersScreen').classList.add('show');
+  await loadMembers(proj.id);
+}
+
+function closeMembersScreen(){
+  document.getElementById('membersScreen').classList.remove('show');
+}
+
+async function loadMembers(projectId){
+  const body = document.getElementById('membersBody');
+  body.innerHTML = '<div style="color:var(--dim);font-family:Share Tech Mono,monospace;font-size:11px;padding:20px;">CARICAMENTO...</div>';
+  try{
+    // Carica membri attuali
+    const {data:members, error:me} = await sb.from('project_members')
+      .select('user_id, profiles(id,name,role)').eq('project_id',projectId);
+    if(me) throw me;
+
+    // Carica tutti gli utenti attivi
+    const {data:allUsers, error:ue} = await sb.from('profiles')
+      .select('id,name').eq('active',true).eq('hidden',false).order('name');
+    if(ue) throw ue;
+
+    const memberIds = (members||[]).map(m=>m.user_id);
+    const available = (allUsers||[]).filter(u=>!memberIds.includes(u.id));
+
+    let html = '';
+
+    // Lista membri attuali
+    html += '<div class="members-section-title">RISORSE ASSEGNATE</div>';
+    if(!members||!members.length){
+      html += '<div style="color:var(--dim);font-family:Share Tech Mono,monospace;font-size:11px;padding:8px 0;">Nessuna risorsa assegnata</div>';
+    } else {
+      members.forEach(m=>{
+        html += '<div class="member-chip" data-uid="'+m.user_id+'" data-pid="'+projectId+'">'+
+          '<span class="member-chip-name">'+esc(m.profiles?.name||'—')+'</span>'+
+          '<span class="member-chip-remove" data-uid="'+m.user_id+'" data-pid="'+projectId+'">✕</span>'+
+          '</div>';
+      });
+    }
+
+    // Aggiungi nuova risorsa
+    if(available.length){
+      html += '<div class="members-section-title">AGGIUNGI RISORSA</div>';
+      html += '<div class="member-add-row">'+
+        '<select class="member-add-select" id="memberAddSelect_'+projectId+'">'+
+          available.map(u=>'<option value="'+u.id+'">'+esc(u.name)+'</option>').join('')+
+        '</select>'+
+        '<button class="member-add-btn" data-pid="'+projectId+'">＋ AGGIUNGI</button>'+
+        '</div>';
+    }
+
+    body.innerHTML = html;
+
+    // Event listeners rimozione
+    body.querySelectorAll('.member-chip-remove').forEach(btn=>{
+      btn.addEventListener('click', async()=>{
+        try{
+          const {error}=await sb.from('project_members').delete()
+            .eq('project_id',btn.dataset.pid).eq('user_id',btn.dataset.uid);
+          if(error) throw error;
+          await loadMembers(btn.dataset.pid);
+          toast('Risorsa rimossa');
+        }catch(e){toast('⚠ '+e.message);}
+      });
+    });
+
+    // Event listener aggiunta
+    const addBtn = body.querySelector('.member-add-btn');
+    if(addBtn){
+      addBtn.addEventListener('click', async()=>{
+        const sel = document.getElementById('memberAddSelect_'+addBtn.dataset.pid);
+        if(!sel||!sel.value) return;
+        try{
+          const {error}=await sb.from('project_members').insert(
+            {project_id:addBtn.dataset.pid, user_id:sel.value}
+          );
+          if(error) throw error;
+          await loadMembers(addBtn.dataset.pid);
+          toast('Risorsa aggiunta');
+        }catch(e){toast('⚠ '+e.message);}
+      });
+    }
+
+  }catch(e){
+    body.innerHTML='<div style="color:var(--red);font-family:Share Tech Mono,monospace;font-size:11px;padding:20px;">'+esc(e.message)+'</div>';
+  }
 }
 
 /* ── HOME ── */
