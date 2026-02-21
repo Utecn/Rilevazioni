@@ -491,7 +491,19 @@ body.sort-mode .sort-handle{display:block;}
 
 <div class="overlay" id="newProjOverlay"><div class="sheet">
   <div class="sheet-title">NUOVO PROGETTO</div>
-  <input class="text-input" id="newProjInput" type="text" maxlength="40" placeholder="Nome progetto...">
+  <div style="margin-bottom:12px;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">DATA</div>
+    <div style="display:flex;gap:6px;">
+      <select class="text-input" id="newProjDay" style="padding:10px 8px;font-size:14px;flex:1;"></select>
+      <select class="text-input" id="newProjMonth" style="padding:10px 8px;font-size:14px;flex:2;"></select>
+      <select class="text-input" id="newProjYear" style="padding:10px 8px;font-size:14px;flex:1.5;"></select>
+    </div>
+  </div>
+  <div style="margin-bottom:12px;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">NOME PROGETTO</div>
+    <input class="text-input" id="newProjInput" type="text" maxlength="40" placeholder="Nome progetto...">
+    <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:5px;letter-spacing:1px;" id="newProjPreview">—</div>
+  </div>
   <div style="margin-bottom:12px;">
     <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">RESPONSABILE</div>
     <select class="text-input" id="newProjResponsible" style="padding:10px 12px;font-size:14px;"></select>
@@ -1237,18 +1249,57 @@ function renderProjSheet(projects){
 }
 async function openNewProjSheet(){
   document.getElementById('newProjInput').value='';
-  // Popola il select dei responsabili
+  document.getElementById('newProjPreview').textContent='—';
+
+  // Popola i selettori data con oggi come default
+  const today = new Date();
+  const dayEl = document.getElementById('newProjDay');
+  const monEl = document.getElementById('newProjMonth');
+  const yrEl  = document.getElementById('newProjYear');
+
+  dayEl.innerHTML = Array.from({length:31},(_,i)=>{
+    const v=String(i+1).padStart(2,'0');
+    return '<option value="'+v+'"'+(i+1===today.getDate()?' selected':'')+'>'+v+'</option>';
+  }).join('');
+
+  const months=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                 'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  monEl.innerHTML = months.map((m,i)=>{
+    const v=String(i+1).padStart(2,'0');
+    return '<option value="'+v+'"'+(i===today.getMonth()?' selected':'')+'>'+m+'</option>';
+  }).join('');
+
+  const thisYear = today.getFullYear();
+  yrEl.innerHTML = [thisYear-1,thisYear,thisYear+1].map(y=>
+    '<option value="'+y+'"'+(y===thisYear?' selected':'')+'>'+y+'</option>'
+  ).join('');
+
+  // Aggiorna preview nome
+  const updatePreview = ()=>{
+    const name = document.getElementById('newProjInput').value.trim();
+    const d=dayEl.value, m=monEl.value, y=yrEl.value;
+    document.getElementById('newProjPreview').textContent = name ? y+m+d+'_'+name : '—';
+  };
+  dayEl.onchange = monEl.onchange = yrEl.onchange = updatePreview;
+  document.getElementById('newProjInput').oninput = updatePreview;
+
+  // Popola responsabili
   const sel = document.getElementById('newProjResponsible');
   sel.innerHTML = '<option value="">— caricamento —</option>';
   const {data:users} = await sb.from('profiles').select('id,name').eq('active',true).eq('hidden',false).order('name');
   sel.innerHTML = (users||[]).map(u=>
     '<option value="'+u.id+'"'+(u.id===currentUser.id?' selected':'')+'>'+esc(u.name)+'</option>'
   ).join('');
+
   showSheet('newProjOverlay');
   setTimeout(()=>document.getElementById('newProjInput').focus(),120);
 }
 async function doCreateProject(){
-  const name=document.getElementById('newProjInput').value.trim(); if(!name){document.getElementById('newProjInput').focus();return;}
+  const rawName=document.getElementById('newProjInput').value.trim(); if(!rawName){document.getElementById('newProjInput').focus();return;}
+  const d=document.getElementById('newProjDay')?.value||'';
+  const m=document.getElementById('newProjMonth')?.value||'';
+  const y=document.getElementById('newProjYear')?.value||'';
+  const name = (y&&m&&d) ? y+m+d+'_'+rawName : rawName;
   try {
     const responsibleId = document.getElementById('newProjResponsible')?.value || currentUser.id;
     const {data,error}=await sb.from('projects').insert({name,created_by:currentUser.id,responsible_id:responsibleId,contract_id:currentContract?.id||null}).select().single();
