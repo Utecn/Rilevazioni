@@ -777,52 +777,51 @@ function goBackToContracts(){
 }
 
 let _showAllProjects = false;
+let _cachedProjects = [];
 
 function renderProjects(projects){
-  const list=document.getElementById('splashList'); list.innerHTML='';
-
+  // Prima chiamata: inizializza stato toggle
+  if(projects !== null) _cachedProjects = projects;
   const isAdminOrPM = currentUser.role==='admin' || currentUser.role==='project_manager';
 
-  // Categorize
-  const myProjects   = projects.filter(p => p.responsible_id===currentUser.id || p.isMember);
-  const allProjects  = projects;
-  const visible      = (_showAllProjects || isAdminOrPM) ? allProjects : myProjects;
+  const list = document.getElementById('splashList');
+  list.innerHTML = '';
 
-  // Toggle switch (always shown)
+  // ── Toggle ──
   const toggleWrap = document.createElement('div'); toggleWrap.className='proj-toggle-wrap';
   toggleWrap.innerHTML=
     '<span class="proj-toggle-label">Tutti i progetti</span>'+
     '<label class="proj-toggle">'+
-      '<input type="checkbox" id="projToggle"'+((_showAllProjects||isAdminOrPM)?' checked':'')+'>'+
+      '<input type="checkbox" id="projToggle"'+(_showAllProjects?' checked':'')+'>'+
       '<span class="proj-toggle-slider"></span>'+
     '</label>';
   list.appendChild(toggleWrap);
-  const togInput = toggleWrap.querySelector('#projToggle');
-  togInput.addEventListener('change', ()=>{
-    _showAllProjects = togInput.checked;
-    renderProjects(projects);
+  document.getElementById('projToggle').addEventListener('change', function(){
+    _showAllProjects = this.checked;
+    renderProjects(null);
   });
+
+  // ── Filtra ──
+  const all = _cachedProjects;
+  const mine = all.filter(p => p.responsible_id===currentUser.id || p.isMember);
+  const visible = _showAllProjects ? all : mine;
 
   if(!visible.length){
     const empty=document.createElement('div'); empty.className='proj-empty';
-    empty.textContent='Nessun progetto disponibile.';
+    empty.textContent = 'Nessun progetto disponibile.';
     list.appendChild(empty); return;
   }
 
-  // Sections for non-admin/PM when showing all
-  const showSections = !isAdminOrPM && _showAllProjects;
-
-  if(showSections){
-    const mine = visible.filter(p=>p.responsible_id===currentUser.id||p.isMember);
-    const others = visible.filter(p=>p.responsible_id!==currentUser.id&&!p.isMember);
-    if(mine.length){
-      const lbl=document.createElement('div'); lbl.className='proj-section-label'; lbl.textContent='I MIEI PROGETTI';
-      list.appendChild(lbl);
-      mine.forEach(p=>list.appendChild(buildProjRow(p)));
-    }
+  // ── Sezioni ──
+  if(_showAllProjects && mine.length && all.length > mine.length){
+    const myIds = new Set(mine.map(p=>p.id));
+    const others = all.filter(p=>!myIds.has(p.id));
+    const lbl1=document.createElement('div'); lbl1.className='proj-section-label'; lbl1.textContent='I MIEI PROGETTI';
+    list.appendChild(lbl1);
+    mine.forEach(p=>list.appendChild(buildProjRow(p)));
     if(others.length){
-      const lbl=document.createElement('div'); lbl.className='proj-section-label'; lbl.textContent='ALTRI PROGETTI';
-      list.appendChild(lbl);
+      const lbl2=document.createElement('div'); lbl2.className='proj-section-label'; lbl2.textContent='ALTRI PROGETTI';
+      list.appendChild(lbl2);
       others.forEach(p=>list.appendChild(buildProjRow(p)));
     }
   } else {
