@@ -85,6 +85,17 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 .proj-item-team{width:44px;align-self:stretch;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(179,136,255,0.08);border:2px solid var(--purple);border-radius:8px;color:var(--purple);font-size:18px;cursor:pointer;touch-action:manipulation;}
 .proj-item-team:active{opacity:.6;}
 .proj-empty{padding:30px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);line-height:2;}
+.proj-toggle-wrap{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:360px;margin-bottom:10px;padding:0 2px;}
+.proj-toggle-label{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;}
+.proj-toggle{position:relative;width:40px;height:22px;cursor:pointer;}
+.proj-toggle input{opacity:0;width:0;height:0;position:absolute;}
+.proj-toggle-slider{position:absolute;inset:0;background:var(--border2);border-radius:22px;transition:background .2s;}
+.proj-toggle-slider::before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s;}
+.proj-toggle input:checked + .proj-toggle-slider{background:var(--orange);}
+.proj-toggle input:checked + .proj-toggle-slider::before{transform:translateX(18px);}
+.proj-section-label{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;padding:10px 4px 4px;opacity:.7;}
+.proj-item.mine{border-color:var(--orange);}
+.proj-item.member{border-color:var(--border2);}
 
 /* ── HEADER ── */
 .header{flex-shrink:0;display:flex;align-items:center;padding:9px 10px;background:var(--panel);border-bottom:1px solid var(--border);gap:6px;}
@@ -733,14 +744,27 @@ async function selectContract(contract){
     const counts = await Promise.all(projects.map(p =>
       sb.from('log_entries').select('id',{count:'exact',head:true}).eq('project_id',p.id)
     ));
-    // Fetch responsible names separately
+    // Fetch responsible names
     const respIds=[...new Set((projects||[]).map(p=>p.responsible_id).filter(Boolean))];
     let respMap={};
     if(respIds.length){
       const {data:resps}=await sb.from('profiles').select('id,name').in('id',respIds);
       (resps||[]).forEach(r=>respMap[r.id]=r.name);
     }
-    const enriched = projects.map((p,i)=>({...p, log_count: counts[i].count||0, responsible_name: respMap[p.responsible_id]||'—'}));
+    // Fetch user memberships for this contract's projects
+    const projIds = (projects||[]).map(p=>p.id);
+    let memberProjIds=[];
+    if(projIds.length){
+      const {data:mems}=await sb.from('project_members').select('project_id')
+        .eq('user_id',currentUser.id).in('project_id',projIds);
+      memberProjIds = (mems||[]).map(m=>m.project_id);
+    }
+    const enriched = projects.map((p,i)=>({
+      ...p,
+      log_count: counts[i].count||0,
+      responsible_name: respMap[p.responsible_id]||'—',
+      isMember: memberProjIds.includes(p.id)
+    }));
     renderProjects(enriched);
     document.getElementById('splash').classList.remove('hidden');
   } catch(e){ toast('Errore: '+e.message); }
@@ -752,47 +776,100 @@ function goBackToContracts(){
   loadContracts();
 }
 
+let _showAllProjects = false;
+
 function renderProjects(projects){
   const list=document.getElementById('splashList'); list.innerHTML='';
-  if(!projects.length){
-    list.innerHTML='<div class="proj-empty">Nessun progetto in questo appalto.<br>Crea il primo progetto.</div>';
-    return;
+
+  const isAdminOrPM = currentUser.role==='admin' || currentUser.role==='project_manager';
+
+  // Categorize
+  const myProjects   = projects.filter(p => p.responsible_id===currentUser.id || p.isMember);
+  const allProjects  = projects;
+  const visible      = (_showAllProjects || isAdminOrPM) ? allProjects : myProjects;
+
+  // Toggle switch (always shown)
+  const toggleWrap = document.createElement('div'); toggleWrap.className='proj-toggle-wrap';
+  toggleWrap.innerHTML=
+    '<span class="proj-toggle-label">Tutti i progetti</span>'+
+    '<label class="proj-toggle">'+
+      '<input type="checkbox" id="projToggle"'+((_showAllProjects||isAdminOrPM)?' checked':'')+
+        (isAdminOrPM?' disabled':'')+'>'+
+      '<span class="proj-toggle-slider"></span>'+
+    '</label>';
+  list.appendChild(toggleWrap);
+  const togInput = toggleWrap.querySelector('#projToggle');
+  if(!isAdminOrPM){
+    togInput.addEventListener('change', ()=>{
+      _showAllProjects = togInput.checked;
+      renderProjects(projects);
+    });
   }
-  projects.forEach(p=>{
-    const isResp = p.responsible_id === currentUser.id;
-    const canManage = currentUser.role==='admin' || currentUser.role==='project_manager' || isResp;
 
-    const wrap = document.createElement('div'); wrap.className='proj-item-wrap';
+  if(!visible.length){
+    const empty=document.createElement('div'); empty.className='proj-empty';
+    empty.textContent='Nessun progetto disponibile.';
+    list.appendChild(empty); return;
+  }
 
-    // Card principale — solo navigazione
-    const item = document.createElement('div'); item.className='proj-item';
-    item.innerHTML=
-      '<div class="proj-item-body">'+
-        '<div class="proj-item-name">'+esc(p.name)+'</div>'+
-        '<div class="proj-item-meta">'+
-          (isResp ? '<span style="color:var(--orange)">● tu</span>' : esc(p.responsible_name||'—'))+
-          ' · '+p.log_count+' rilev.'+
-        '</div>'+
-      '</div>';
-    item.addEventListener('click', ()=>selectProject(p));
-    wrap.appendChild(item);
+  // Sections for non-admin/PM when showing all
+  const showSections = !isAdminOrPM && _showAllProjects;
 
-    if(canManage){
-      // Tasto risorse — completamente separato
-      const teamBtn = document.createElement('div'); teamBtn.className='proj-item-team';
-      teamBtn.textContent='👥';
-      teamBtn.addEventListener('click', ()=>openMembersScreen(p));
-      wrap.appendChild(teamBtn);
-
-      // Tasto elimina — completamente separato
-      const delBtn = document.createElement('div'); delBtn.className='proj-item-del';
-      delBtn.textContent='✕';
-      delBtn.addEventListener('click', ()=>deleteProjConfirm(p.id,p.name));
-      wrap.appendChild(delBtn);
+  if(showSections){
+    const mine = visible.filter(p=>p.responsible_id===currentUser.id||p.isMember);
+    const others = visible.filter(p=>p.responsible_id!==currentUser.id&&!p.isMember);
+    if(mine.length){
+      const lbl=document.createElement('div'); lbl.className='proj-section-label'; lbl.textContent='I MIEI PROGETTI';
+      list.appendChild(lbl);
+      mine.forEach(p=>list.appendChild(buildProjRow(p)));
     }
+    if(others.length){
+      const lbl=document.createElement('div'); lbl.className='proj-section-label'; lbl.textContent='ALTRI PROGETTI';
+      list.appendChild(lbl);
+      others.forEach(p=>list.appendChild(buildProjRow(p)));
+    }
+  } else {
+    visible.forEach(p=>list.appendChild(buildProjRow(p)));
+  }
+}
 
-    list.appendChild(wrap);
-  });
+function buildProjRow(p){
+  const isResp = p.responsible_id === currentUser.id;
+  const canManage = currentUser.role==='admin' || currentUser.role==='project_manager' || isResp;
+
+  const wrap = document.createElement('div'); wrap.className='proj-item-wrap';
+
+  // Card principale — evidenziata se responsabile
+  const item = document.createElement('div');
+  item.className='proj-item'+(isResp?' mine':p.isMember?' member':'');
+  item.innerHTML=
+    '<div class="proj-item-body">'+
+      '<div class="proj-item-name">'+esc(p.name)+'</div>'+
+      '<div class="proj-item-meta">'+
+        (isResp
+          ? '<span style="color:var(--orange)">★ responsabile</span>'
+          : p.isMember
+            ? '<span style="color:var(--cyan)">◈ membro</span> · '+esc(p.responsible_name||'—')
+            : esc(p.responsible_name||'—'))+
+        ' · '+p.log_count+' rilev.'+
+      '</div>'+
+    '</div>';
+  item.addEventListener('click', ()=>selectProject(p));
+  wrap.appendChild(item);
+
+  if(canManage){
+    const teamBtn = document.createElement('div'); teamBtn.className='proj-item-team';
+    teamBtn.textContent='👥';
+    teamBtn.addEventListener('click', ()=>openMembersScreen(p));
+    wrap.appendChild(teamBtn);
+
+    const delBtn = document.createElement('div'); delBtn.className='proj-item-del';
+    delBtn.textContent='✕';
+    delBtn.addEventListener('click', ()=>deleteProjConfirm(p.id,p.name));
+    wrap.appendChild(delBtn);
+  }
+
+  return wrap;
 }
 
 async function selectProject(proj){
