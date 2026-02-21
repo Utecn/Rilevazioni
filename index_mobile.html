@@ -1214,8 +1214,8 @@ async function loadMembers(projectId){
   body.innerHTML = '<div style="color:var(--dim);font-family:Share Tech Mono,monospace;font-size:11px;padding:20px;">CARICAMENTO...</div>';
   try{
     // Carica membri attuali
-    const {data:members, error:me} = await sb.from('project_members')
-      .select('user_id, profiles(id,name,role)').eq('project_id',projectId);
+    const {data:membersRaw, error:me} = await sb.from('project_members')
+      .select('user_id').eq('project_id',projectId);
     if(me) throw me;
 
     // Carica tutti gli utenti attivi
@@ -1223,7 +1223,10 @@ async function loadMembers(projectId){
       .select('id,name').eq('active',true).eq('hidden',false).order('name');
     if(ue) throw ue;
 
-    const memberIds = (members||[]).map(m=>m.user_id);
+    const memberIds = (membersRaw||[]).map(m=>m.user_id);
+    const userMap = {}; (allUsers||[]).forEach(u=>userMap[u.id]=u.name);
+    // Build members with names
+    const members = (membersRaw||[]).map(m=>({user_id:m.user_id, name:userMap[m.user_id]||'—'}));
     const available = (allUsers||[]).filter(u=>!memberIds.includes(u.id));
 
     let html = '';
@@ -1234,8 +1237,8 @@ async function loadMembers(projectId){
       html += '<div style="color:var(--dim);font-family:Share Tech Mono,monospace;font-size:11px;padding:8px 0;">Nessuna risorsa assegnata</div>';
     } else {
       members.forEach(m=>{
-        html += '<div class="member-chip" data-uid="'+m.user_id+'" data-pid="'+projectId+'">'+
-          '<span class="member-chip-name">'+esc(m.profiles?.name||'—')+'</span>'+
+        html += '<div class="member-chip">'+
+          '<span class="member-chip-name">'+esc(m.name)+'</span>'+
           '<span class="member-chip-remove" data-uid="'+m.user_id+'" data-pid="'+projectId+'">✕</span>'+
           '</div>';
       });
