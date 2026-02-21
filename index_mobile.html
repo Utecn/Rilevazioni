@@ -178,6 +178,7 @@ body.sort-mode .sort-handle{display:block;}
 .role-badge{padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;font-family:'Share Tech Mono',monospace;}
 .role-badge.admin{background:rgba(179,136,255,.2);color:var(--purple);border:1px solid var(--purple);}
 .role-badge.operatore{background:rgba(0,229,255,.1);color:var(--cyan);border:1px solid var(--cyan);}
+.role-badge.project_manager{background:rgba(255,85,0,.15);color:var(--orange);border:1px solid var(--orange);}
 .icon-btn{background:var(--card2);border:1px solid var(--border2);color:var(--dim);width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;}
 .icon-btn:active{opacity:.7;}
 .icon-btn.del{border-color:var(--red);color:var(--red);}
@@ -656,7 +657,7 @@ function afterLogin(){
   document.getElementById('splashNewBtn').style.display    = '';
   document.getElementById('splashAdminBtn').style.display  = isAdmin?'':'none';
   document.getElementById('projSheetNewBtn').style.display = '';
-  document.getElementById('clearBtn').style.display        = isAdmin?'':'none';
+  document.getElementById('clearBtn').style.display        = (isAdmin||currentUser.role==='project_manager')?'':'none';
   loadContracts();
 }
 
@@ -759,7 +760,7 @@ function renderProjects(projects){
   }
   projects.forEach(p=>{
     const isResp = p.responsible_id === currentUser.id;
-    const canManage = currentUser.role==='admin' || isResp;
+    const canManage = currentUser.role==='admin' || currentUser.role==='project_manager' || isResp;
 
     const wrap = document.createElement('div'); wrap.className='proj-item-wrap';
 
@@ -1499,7 +1500,7 @@ async function deleteProjConfirm(id,name){
 /* ── STORICO ── */
 async function openHistory(){
   document.getElementById('histProjLabel').textContent=currentProject?.name||'';
-  document.getElementById('clearBtn').style.display=currentUser?.role==='admin'?'':'none';
+  document.getElementById('clearBtn').style.display=(currentUser?.role==='admin'||currentUser?.role==='project_manager')?'':'none';
   await loadLog();
   const sel=document.getElementById('filterSelect');
   sel.innerHTML='<option value="">Tutti i tasti</option>';
@@ -1721,6 +1722,7 @@ async function loadUserList(){
               '<input class="user-input" data-field="name" placeholder="Nome" value="'+esc(u.name)+'">'+
               '<select class="user-select" data-field="role">'+
                 '<option value="operatore"'+(u.role==='operatore'?' selected':'')+'>Operatore</option>'+
+                '<option value="project_manager"'+(u.role==='project_manager'?' selected':'')+'>Project Manager</option>'+
                 '<option value="admin"'+(u.role==='admin'?' selected':'')+'>Admin</option>'+
               '</select>'+
             '</div>'+
