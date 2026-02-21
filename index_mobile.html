@@ -1355,7 +1355,7 @@ function attachSwipeDelete(wrap, row, delBg, entryId){
       if(error) throw error;
       wrap.style.transition='opacity .25s';
       wrap.style.opacity='0';
-      setTimeout(()=>{ wrap.remove(); loadLog(); renderHistory(); },260);
+      setTimeout(async()=>{ wrap.remove(); await loadLog(); renderHistory(); },260);
       toast('Rilevazione eliminata');
     }catch(err){ toast('⚠ '+err.message); }
   });
