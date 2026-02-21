@@ -763,8 +763,18 @@ function renderProjects(projects){
       (canManage ? '<div class="proj-item-team" title="Gestisci risorse">👥</div>' : '')+
       (canManage ? '<div class="proj-item-del">✕</div>' : '');
     item.querySelector('.proj-item-body').addEventListener('click',()=>selectProject(p));
-    if(canManage) item.querySelector('.proj-item-team')?.addEventListener('click',e=>{e.stopPropagation();openMembersScreen(p);});
-    if(canManage) item.querySelector('.proj-item-del')?.addEventListener('click',e=>{e.stopPropagation();deleteProjConfirm(p.id,p.name);});
+    if(canManage){
+      const teamBtn = item.querySelector('.proj-item-team');
+      if(teamBtn){
+        teamBtn.addEventListener('click',e=>{e.stopPropagation();openMembersScreen(p);});
+        teamBtn.addEventListener('touchend',e=>{e.stopPropagation();e.preventDefault();openMembersScreen(p);},{passive:false});
+      }
+      const delBtn = item.querySelector('.proj-item-del');
+      if(delBtn){
+        delBtn.addEventListener('click',e=>{e.stopPropagation();deleteProjConfirm(p.id,p.name);});
+        delBtn.addEventListener('touchend',e=>{e.stopPropagation();e.preventDefault();deleteProjConfirm(p.id,p.name);},{passive:false});
+      }
+    }
     list.appendChild(item);
   });
 }
