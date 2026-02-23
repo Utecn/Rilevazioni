@@ -1285,7 +1285,10 @@ async function toggleCard(id){
     const endTime=new Date(); const dur=Date.now()-c.start;
     c.running=false; c.start=null; c.elapsed=0; c.records++;
     const el=document.querySelector('.card[data-id="'+id+'"]');
-    if(el){el.classList.remove('on');el.querySelector('.card-btn').textContent='START';el.querySelector('.card-timer').textContent='00:00.000';el.querySelector('.badge').textContent='#'+c.records;}
+    if(el){el.classList.remove('on');el.querySelector('.card-btn').textContent='START';el.querySelector('.card-timer').textContent='00:00.000';el.querySelector('.badge').textContent='#'+c.records;
+      const qEl=el.querySelector('.card-qty'); if(qEl)qEl.textContent='×1';
+    }
+    c.qty=1;
     toast('✓  '+fmtS(dur));
     try {
       const payload = {
