@@ -1410,7 +1410,17 @@ async function confirmQtyEdit(){
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('qtyMinus')?.addEventListener('click',()=>changeQty(-1));
   document.getElementById('qtyPlus')?.addEventListener('click',()=>changeQty(1));
+  // Prevent focus loss on input (keeps keyboard open on mobile)
+  document.getElementById('qtyMinus')?.addEventListener('mousedown',e=>e.preventDefault());
+  document.getElementById('qtyMinus')?.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
+  document.getElementById('qtyMinus')?.addEventListener('touchend',e=>{ e.preventDefault(); changeQty(-1); document.getElementById('qtyInput')?.focus(); });
+  document.getElementById('qtyPlus')?.addEventListener('mousedown',e=>e.preventDefault());
+  document.getElementById('qtyPlus')?.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
+  document.getElementById('qtyPlus')?.addEventListener('touchend',e=>{ e.preventDefault(); changeQty(1); document.getElementById('qtyInput')?.focus(); });
   document.getElementById('qtyInput')?.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const btn=document.querySelector('#qtyOverlay .confirm-btn'); if(btn) btn.click(); } });
+  document.querySelector('#qtyOverlay .confirm-btn')?.addEventListener('mousedown',e=>e.preventDefault());
+  document.querySelector('#qtyOverlay .confirm-btn')?.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
+  document.querySelector('#qtyOverlay .confirm-btn')?.addEventListener('touchend',e=>{ e.preventDefault(); document.querySelector('#qtyOverlay .confirm-btn').click(); });
   // Ripristina comportamento normale se overlay viene chiuso
   document.getElementById('qtyOverlay')?.addEventListener('click', e=>{
     if(e.target.id==='qtyOverlay'){ document.querySelector('#qtyOverlay .confirm-btn').onclick=confirmQty; qtyEditEntryId=null; qtyEditRow=null; }
