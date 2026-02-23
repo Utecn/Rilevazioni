@@ -831,7 +831,7 @@ function renderProjects(projects){
 
 function buildProjRow(p){
   const isResp = p.responsible_id === currentUser.id;
-  const canManage = currentUser.role==='admin' || currentUser.role==='project_manager' || isResp;
+  const canManage = isResp; // solo il responsabile può gestire risorse ed eliminare dalla lista progetti
 
   const wrap = document.createElement('div'); wrap.className='proj-item-wrap';
 
