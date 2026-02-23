@@ -142,6 +142,13 @@ body.sort-mode .sort-handle{display:block;}
 .card.on .card-timer{color:var(--orange);text-shadow:0 0 10px var(--orange-glow);}
 .card-btn{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;padding:5px 14px;border-radius:4px;border:1px solid var(--border2);background:transparent;pointer-events:none;transition:all .2s;font-family:'Rajdhani',sans-serif;}
 .card.on .card-btn{color:var(--orange);border-color:var(--orange);background:var(--orange-dim);}
+.card-qty{position:absolute;bottom:7px;right:8px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);background:var(--card2);border:1px solid var(--border2);border-radius:4px;padding:2px 6px;cursor:pointer;z-index:2;line-height:1.5;transition:color .15s,border-color .15s;}
+.card.on .card-qty{color:var(--orange);border-color:rgba(255,85,0,0.4);}
+.qty-controls{display:flex;align-items:center;gap:16px;justify-content:center;margin:20px 0 16px;}
+.qty-btn{width:52px;height:52px;border-radius:50%;border:2px solid var(--border2);background:var(--card2);color:var(--text);font-size:26px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;}
+.qty-btn:active{opacity:.65;transform:scale(.93);}
+.qty-input{font-family:'Share Tech Mono',monospace;font-size:38px;color:var(--orange);background:transparent;border:none;outline:none;text-align:center;width:90px;caret-color:var(--orange);}
+.rec-qty{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--cyan);white-space:nowrap;padding:1px 6px;background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.2);border-radius:3px;}
 
 /* ── FOOTER ── */
 .footer{flex-shrink:0;display:flex;border-top:1px solid var(--border);background:var(--panel);}
@@ -577,6 +584,18 @@ body.sort-mode .sort-handle{display:block;}
   <input class="text-input" id="newContractInput" type="text" maxlength="80" placeholder="es. Esselunga · Via Roma 1 · Coca-Cola">
   <button class="confirm-btn" onclick="doCreateContract()" style="background:var(--purple);">CREA APPALTO</button>
   <button class="sheet-cancel" onclick="closeSheet('newContractOverlay')">Annulla</button>
+</div></div>
+
+<div class="overlay" id="qtyOverlay"><div class="sheet">
+  <div class="sheet-title">QUANTITÀ — <span id="qtyCardName" style="color:var(--orange);"></span></div>
+  <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:4px;text-align:center;">pezzi · unità · cicli</div>
+  <div class="qty-controls">
+    <button class="qty-btn" id="qtyMinus">−</button>
+    <input class="qty-input" id="qtyInput" type="number" min="1" max="9999" value="1">
+    <button class="qty-btn" id="qtyPlus">＋</button>
+  </div>
+  <button class="confirm-btn" onclick="confirmQty()">CONFERMA</button>
+  <button class="sheet-cancel" onclick="closeSheet('qtyOverlay')">Annulla</button>
 </div></div>
 
 <div class="toast" id="toast"></div>
@@ -1150,7 +1169,7 @@ async function loadCards(){
   const { data, error } = await sb.from('cards')
     .select('*').eq('project_id',currentProject.id).order('position');
   if(error) throw error;
-  cards = data.map(c=>({...c,running:false,start:null,elapsed:0}));
+  cards = data.map(c=>({...c,running:false,start:null,elapsed:0,qty:1}));
 }
 
 async function loadLog(){
@@ -1179,7 +1198,14 @@ function makeCard(c){
     '<div class="sort-handle">· · ·</div>'+
     '<div class="card-name">'+esc(c.name)+'</div>'+
     '<div class="card-timer" id="t_'+c.id+'">'+fmt(c.elapsed)+'</div>'+
-    '<div class="card-btn">'+(c.running?'STOP':'START')+'</div>';
+    '<div class="card-btn">'+(c.running?'STOP':'START')+'</div>'+
+    '<div class="card-qty" id="q_'+c.id+'">×'+(c.qty||1)+'</div>';
+  // Qty button: stop propagation so it doesn't trigger toggleCard
+  const qBtn = div.querySelector('.card-qty');
+  qBtn.addEventListener('touchstart', e=>e.stopPropagation(), {passive:true});
+  qBtn.addEventListener('touchend', e=>{ e.stopPropagation(); e.preventDefault(); openQty(c.id); }, {passive:false});
+  qBtn.addEventListener('mousedown', e=>e.stopPropagation());
+  qBtn.addEventListener('click', e=>{ e.stopPropagation(); openQty(c.id); });
   attachTouch(div,c.id);
   if(sortMode){ div.draggable=true; attachDrag(div,c.id); }
   return div;
@@ -1266,7 +1292,7 @@ async function toggleCard(id){
         project_id:currentProject.id, card_id:c.id, card_name:c.name,
         user_id:currentUser.id, user_name:currentUser.name,
         started_at:c.startedAt, ended_at:endTime.toISOString(), duration_ms:dur,
-        process_id:currentProcess?.id||null
+        process_id:currentProcess?.id||null, quantity:c.qty||1
       }).select().single();
       if(error)throw error;
       logEntries.unshift(data);
@@ -1294,6 +1320,38 @@ function updateFooter(){
   document.getElementById('fRec').textContent=logEntries.length;
   document.getElementById('fActive').textContent=cards.filter(c=>c.running).length;
 }
+
+/* ── QUANTITÀ ── */
+let qtyCardId=null;
+function openQty(id){
+  const c=cards.find(x=>x.id===id); if(!c)return;
+  qtyCardId=id;
+  document.getElementById('qtyCardName').textContent=c.name;
+  document.getElementById('qtyInput').value=c.qty||1;
+  showSheet('qtyOverlay');
+  setTimeout(()=>{ const inp=document.getElementById('qtyInput'); inp.focus(); inp.select(); },150);
+}
+function changeQty(delta){
+  const inp=document.getElementById('qtyInput');
+  inp.value=Math.max(1,Math.min(9999,(parseInt(inp.value)||1)+delta));
+}
+function confirmQty(){
+  if(!qtyCardId)return;
+  const v=Math.max(1,Math.min(9999,parseInt(document.getElementById('qtyInput').value)||1));
+  const c=cards.find(x=>x.id===qtyCardId); if(!c)return;
+  c.qty=v;
+  const el=document.getElementById('q_'+qtyCardId);
+  if(el)el.textContent='×'+v;
+  closeSheet('qtyOverlay');
+  toast('Quantità: ×'+v);
+  qtyCardId=null;
+}
+// Attacca pulsanti +/− overlay (dopo DOM ready)
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('qtyMinus')?.addEventListener('click',()=>changeQty(-1));
+  document.getElementById('qtyPlus')?.addEventListener('click',()=>changeQty(1));
+  document.getElementById('qtyInput')?.addEventListener('keydown',e=>{ if(e.key==='Enter')confirmQty(); });
+});
 
 /* ── MEMBERS SCREEN ── */
 async function openMembersScreen(proj){
@@ -1682,7 +1740,10 @@ function renderHistory(){
       row.innerHTML='<div class="rec-name">'+esc(r.card_name)+'</div>'+
         '<div class="rec-info"><div class="rec-time">'+timeStr(r.started_at)+' → '+timeStr(r.ended_at)+'</div>'+
         '<div class="rec-user">'+esc(r.user_name||'')+'</div></div>'+
-        '<div class="rec-dur">'+fmtS(r.duration_ms)+'</div>';
+        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">'+
+          '<div class="rec-dur">'+fmtS(r.duration_ms)+'</div>'+
+          ((r.quantity&&r.quantity>1)?'<div class="rec-qty">×'+r.quantity+'</div>':'')+
+        '</div>';
       attachSwipeDelete(wrap, row, delBg, r.id);
       wrap.appendChild(delBg);
       wrap.appendChild(row);
@@ -1709,21 +1770,22 @@ function openExport(){ document.getElementById('emailInput').value=''; showSheet
 async function doExport(){
   const filtered=getFilteredLog(); if(!filtered.length){toast('Nessuna rilevazione');return;}
   const sorted=[...filtered].sort((a,b)=>new Date(a.started_at)-new Date(b.started_at));
-  const wsData=[['N°','Progetto','Tasto','Operatore','Data','Ora Inizio','Ora Fine','Durata (mm:ss.ms)','Durata (sec,ms)','Durata (ms)']];
+  const wsData=[['N°','Progetto','Tasto','Operatore','Data','Ora Inizio','Ora Fine','Durata (mm:ss.ms)','Durata (sec,ms)','Durata (ms)','Qtà']];
   sorted.forEach((r,i)=>{
     const si=Math.floor(r.duration_ms/1000),ms=String(r.duration_ms%1000).padStart(3,'0');
-    wsData.push([i+1,currentProject?.name||'—',r.card_name,r.user_name||'—',dateStr(r.started_at),timeStr(r.started_at),timeStr(r.ended_at),fmt(r.duration_ms),si+','+ms,r.duration_ms]);
+    wsData.push([i+1,currentProject?.name||'—',r.card_name,r.user_name||'—',dateStr(r.started_at),timeStr(r.started_at),timeStr(r.ended_at),fmt(r.duration_ms),si+','+ms,r.duration_ms,r.quantity||1]);
   });
   const names=[...new Set(sorted.map(r=>r.card_name))];
-  const summData=[['Tasto','N° Rilevazioni','Durata Totale','Media','Min','Max']];
+  const summData=[['Tasto','N° Rilevazioni','Qtà Totale','Durata Totale','Media','Min','Max']];
   names.forEach(n=>{
     const recs=sorted.filter(r=>r.card_name===n),durs=recs.map(r=>r.duration_ms),tot=durs.reduce((a,b)=>a+b,0);
-    summData.push([n,recs.length,fmtS(tot),fmtS(tot/recs.length),fmtS(Math.min(...durs)),fmtS(Math.max(...durs))]);
+    const qtyTot=recs.reduce((a,r)=>a+(r.quantity||1),0);
+    summData.push([n,recs.length,qtyTot,fmtS(tot),fmtS(tot/recs.length),fmtS(Math.min(...durs)),fmtS(Math.max(...durs))]);
   });
   const wb=XLSX.utils.book_new();
   const ws1=XLSX.utils.aoa_to_sheet(wsData),ws2=XLSX.utils.aoa_to_sheet(summData);
-  ws1['!cols']=[{wch:4},{wch:18},{wch:18},{wch:18},{wch:12},{wch:12},{wch:12},{wch:18},{wch:12},{wch:12}];
-  ws2['!cols']=[{wch:20},{wch:16},{wch:16},{wch:16},{wch:10},{wch:10}];
+  ws1['!cols']=[{wch:4},{wch:18},{wch:18},{wch:18},{wch:12},{wch:12},{wch:12},{wch:18},{wch:12},{wch:12},{wch:6}];
+  ws2['!cols']=[{wch:20},{wch:16},{wch:12},{wch:16},{wch:16},{wch:10},{wch:10}];
   XLSX.utils.book_append_sheet(wb,ws1,'Rilevazioni'); XLSX.utils.book_append_sheet(wb,ws2,'Riepilogo');
   const now=new Date();
   const fname='rilevazioni_'+(currentProject?.name||'export').replace(/[^a-zA-Z0-9_\-]/g,'_')+'_'+now.getFullYear()+p2(now.getMonth()+1)+p2(now.getDate())+'.xlsx';
@@ -1965,10 +2027,10 @@ async function adminCreateProject(){
 function showSheet(id){ document.getElementById(id).classList.add('show'); }
 function closeSheet(id){ document.getElementById(id).classList.remove('show'); }
 function closeAllSheets(){
-  ['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','newContractOverlay']
+  ['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','newContractOverlay','qtyOverlay']
   .forEach(id=>document.getElementById(id).classList.remove('show'));
 }
-['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','newContractOverlay']
+['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','newContractOverlay','qtyOverlay']
 .forEach(id=>document.getElementById(id).addEventListener('click',e=>{if(e.target.id===id)closeSheet(id);}));
 
 /* ── TOAST / LOADING ── */
