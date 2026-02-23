@@ -1356,11 +1356,68 @@ function confirmQty(){
   toast('Quantità: ×'+v);
   qtyCardId=null;
 }
+
+/* Modifica quantità da storico (long-press su riga) */
+let qtyEditEntryId=null, qtyEditRow=null;
+function openQtyEdit(entryId, row){
+  qtyEditEntryId=entryId; qtyEditRow=row;
+  // Leggi quantità corrente dalla riga se presente
+  const qtyBadge=row.querySelector('.rec-qty');
+  const current=qtyBadge ? parseInt(qtyBadge.textContent.replace('×',''))||1 : 1;
+  // Riusa overlay quantità ma adatta titolo
+  const cardNameEl=document.getElementById('qtyCardName');
+  const nameEl=row.querySelector('.rec-name');
+  cardNameEl.textContent=(nameEl?.textContent||'rilevazione');
+  document.getElementById('qtyInput').value=current;
+  // Sostituisce temporaneamente il comportamento di conferma
+  const btn=document.querySelector('#qtyOverlay .confirm-btn');
+  btn.onclick=confirmQtyEdit;
+  showSheet('qtyOverlay');
+  setTimeout(()=>{ const inp=document.getElementById('qtyInput'); inp.focus(); inp.select(); },150);
+}
+
+async function confirmQtyEdit(){
+  if(!qtyEditEntryId)return;
+  const v=Math.max(1,Math.min(9999,parseInt(document.getElementById('qtyInput').value)||1));
+  try{
+    const {error}=await sb.from('log_entries').update({quantity:v}).eq('id',qtyEditEntryId);
+    if(error)throw error;
+    // Aggiorna la riga visivamente
+    if(qtyEditRow){
+      let badge=qtyEditRow.querySelector('.rec-qty');
+      const durWrap=qtyEditRow.querySelector('.rec-dur')?.parentElement;
+      if(v>1){
+        if(!badge){
+          badge=document.createElement('div'); badge.className='rec-qty';
+          durWrap?.appendChild(badge);
+        }
+        badge.textContent='×'+v;
+      } else {
+        badge?.remove();
+      }
+    }
+    // Aggiorna anche in logEntries locale
+    const entry=logEntries.find(e=>e.id===qtyEditEntryId);
+    if(entry) entry.quantity=v;
+    toast('Quantità aggiornata: ×'+v);
+  }catch(e){toast('⚠ '+e.message);}
+  // Ripristina comportamento normale del bottone conferma
+  document.querySelector('#qtyOverlay .confirm-btn').onclick=confirmQty;
+  closeSheet('qtyOverlay');
+  qtyEditEntryId=null; qtyEditRow=null;
+}
 // Attacca pulsanti +/− overlay (dopo DOM ready)
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('qtyMinus')?.addEventListener('click',()=>changeQty(-1));
   document.getElementById('qtyPlus')?.addEventListener('click',()=>changeQty(1));
-  document.getElementById('qtyInput')?.addEventListener('keydown',e=>{ if(e.key==='Enter')confirmQty(); });
+  document.getElementById('qtyInput')?.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const btn=document.querySelector('#qtyOverlay .confirm-btn'); if(btn) btn.click(); } });
+  // Ripristina comportamento normale se overlay viene chiuso
+  document.getElementById('qtyOverlay')?.addEventListener('click', e=>{
+    if(e.target.id==='qtyOverlay'){ document.querySelector('#qtyOverlay .confirm-btn').onclick=confirmQty; qtyEditEntryId=null; qtyEditRow=null; }
+  });
+  document.querySelector('#qtyOverlay .sheet-cancel')?.addEventListener('click',()=>{
+    document.querySelector('#qtyOverlay .confirm-btn').onclick=confirmQty; qtyEditEntryId=null; qtyEditRow=null;
+  });
 });
 
 /* ── MEMBERS SCREEN ── */
@@ -1649,19 +1706,30 @@ async function openHistory(){
 }
 function closeHistory(){ document.getElementById('histScreen').classList.remove('show'); }
 function getFilteredLog(){ const f=document.getElementById('filterSelect').value; return f?logEntries.filter(r=>r.card_name===f):[...logEntries]; }
-function attachSwipeDelete(wrap, row, delBg, entryId){
+function attachSwipeDelete(wrap, row, delBg, entry){\
+  const entryId = typeof entry === 'object' ? entry.id : entry;
   const DEL_W = 110;
   let px=0, py=0, active=false, dir=null, swiped=false;
+  let lpTimer=null, lpFired=false;
 
   wrap.addEventListener('pointerdown', e=>{
-    px=e.clientX; py=e.clientY; active=true; dir=null;
+    px=e.clientX; py=e.clientY; active=true; dir=null; lpFired=false;
     wrap.setPointerCapture(e.pointerId);
     row.style.transition='none';
+    // long-press: 600ms fermo
+    lpTimer=setTimeout(()=>{
+      lpFired=true;
+      if(active && dir!=='h'){
+        vib(40);
+        openQtyEdit(entryId, row);
+      }
+    },600);
   });
 
   wrap.addEventListener('pointermove', e=>{
     if(!active) return;
     const dx=e.clientX-px, dy=e.clientY-py;
+    if(Math.abs(dx)>8||Math.abs(dy)>8){ if(lpTimer){clearTimeout(lpTimer);lpTimer=null;} }
     if(dir===null){
       if(Math.abs(dx)<6 && Math.abs(dy)<6) return;
       dir = Math.abs(dx)>Math.abs(dy) ? 'h' : 'v';
@@ -1677,7 +1745,9 @@ function attachSwipeDelete(wrap, row, delBg, entryId){
   });
 
   wrap.addEventListener('pointerup', e=>{
+    if(lpTimer){clearTimeout(lpTimer);lpTimer=null;}
     if(!active) return; active=false;
+    if(lpFired) return;
     if(dir!=='h'){ return; }
     const dx=e.clientX-px;
     row.style.transition='transform .25s ease';
@@ -1696,6 +1766,7 @@ function attachSwipeDelete(wrap, row, delBg, entryId){
   });
 
   wrap.addEventListener('pointercancel', ()=>{
+    if(lpTimer){clearTimeout(lpTimer);lpTimer=null;}
     active=false;
     row.style.transition='transform .25s ease';
     row.style.transform='';
@@ -1754,7 +1825,7 @@ function renderHistory(){
           '<div class="rec-dur">'+fmtS(r.duration_ms)+'</div>'+
           ((r.quantity&&r.quantity>1)?'<div class="rec-qty">×'+r.quantity+'</div>':'')+
         '</div>';
-      attachSwipeDelete(wrap, row, delBg, r.id);
+      attachSwipeDelete(wrap, row, delBg, r);
       wrap.appendChild(delBg);
       wrap.appendChild(row);
       grp.appendChild(wrap);
