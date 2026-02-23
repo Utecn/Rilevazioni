@@ -1288,16 +1288,22 @@ async function toggleCard(id){
     if(el){el.classList.remove('on');el.querySelector('.card-btn').textContent='START';el.querySelector('.card-timer').textContent='00:00.000';el.querySelector('.badge').textContent='#'+c.records;}
     toast('✓  '+fmtS(dur));
     try {
-      const {data,error}=await sb.from('log_entries').insert({
+      const payload = {
         project_id:currentProject.id, card_id:c.id, card_name:c.name,
         user_id:currentUser.id, user_name:currentUser.name,
         started_at:c.startedAt, ended_at:endTime.toISOString(), duration_ms:dur,
         process_id:currentProcess?.id||null, quantity:c.qty||1
-      }).select().single();
-      if(error)throw error;
-      logEntries.unshift(data);
+      };
+      let res = await sb.from('log_entries').insert(payload).select().single();
+      // Se fallisce per la colonna quantity inesistente, riprova senza
+      if(res.error && res.error.message && res.error.message.includes('quantity')){
+        const {quantity:_, ...payloadNoQty} = payload;
+        res = await sb.from('log_entries').insert(payloadNoQty).select().single();
+      }
+      if(res.error) throw res.error;
+      logEntries.unshift(res.data);
       await sb.from('cards').update({records:c.records}).eq('id',c.id);
-    } catch(e){ toast('⚠ Errore salvataggio'); }
+    } catch(e){ toast('⚠ Errore salvataggio: '+e.message); }
   }
   updateFooter();
 }
