@@ -1283,19 +1283,20 @@ async function toggleCard(id){
     startTick();
   } else {
     const endTime=new Date(); const dur=Date.now()-c.start;
+    const savedQty = c.qty||1;
     c.running=false; c.start=null; c.elapsed=0; c.records++;
     const el=document.querySelector('.card[data-id="'+id+'"]');
     if(el){el.classList.remove('on');el.querySelector('.card-btn').textContent='START';el.querySelector('.card-timer').textContent='00:00.000';el.querySelector('.badge').textContent='#'+c.records;
       const qEl=el.querySelector('.card-qty'); if(qEl)qEl.textContent='×1';
     }
     c.qty=1;
-    toast('✓  '+fmtS(dur));
+    toast('✓  '+fmtS(dur)+(savedQty>1?' ×'+savedQty:''));
     try {
       const payload = {
         project_id:currentProject.id, card_id:c.id, card_name:c.name,
         user_id:currentUser.id, user_name:currentUser.name,
         started_at:c.startedAt, ended_at:endTime.toISOString(), duration_ms:dur,
-        process_id:currentProcess?.id||null, quantity:c.qty||1
+        process_id:currentProcess?.id||null, quantity:savedQty
       };
       let res = await sb.from('log_entries').insert(payload).select().single();
       // Se fallisce per la colonna quantity inesistente, riprova senza
