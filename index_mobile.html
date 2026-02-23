@@ -1706,7 +1706,7 @@ async function openHistory(){
 }
 function closeHistory(){ document.getElementById('histScreen').classList.remove('show'); }
 function getFilteredLog(){ const f=document.getElementById('filterSelect').value; return f?logEntries.filter(r=>r.card_name===f):[...logEntries]; }
-function attachSwipeDelete(wrap, row, delBg, entry){\
+function attachSwipeDelete(wrap, row, delBg, entry){
   const entryId = typeof entry === 'object' ? entry.id : entry;
   const DEL_W = 110;
   let px=0, py=0, active=false, dir=null, swiped=false;
