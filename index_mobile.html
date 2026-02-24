@@ -1353,6 +1353,7 @@ function confirmQty(){
   const el=document.getElementById('q_'+qtyCardId);
   if(el)el.textContent='×'+v;
   closeSheet('qtyOverlay');
+  document.getElementById('qtyInput')?.blur();
   toast('Quantità: ×'+v);
   qtyCardId=null;
 }
@@ -1404,6 +1405,7 @@ async function confirmQtyEdit(){
   // Ripristina comportamento normale del bottone conferma
   document.querySelector('#qtyOverlay .confirm-btn').onclick=confirmQty;
   closeSheet('qtyOverlay');
+  document.getElementById('qtyInput')?.blur();
   qtyEditEntryId=null; qtyEditRow=null;
 }
 // Attacca pulsanti +/− overlay (dopo DOM ready)
@@ -2116,7 +2118,10 @@ async function adminCreateProject(){
 
 /* ── SHEET HELPERS ── */
 function showSheet(id){ document.getElementById(id).classList.add('show'); }
-function closeSheet(id){ document.getElementById(id).classList.remove('show'); }
+function closeSheet(id){
+  document.getElementById(id).classList.remove('show');
+  if(id==='qtyOverlay') document.getElementById('qtyInput')?.blur();
+}
 function closeAllSheets(){
   ['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','newContractOverlay','qtyOverlay']
   .forEach(id=>document.getElementById(id).classList.remove('show'));
