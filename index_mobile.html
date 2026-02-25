@@ -639,7 +639,11 @@ body.sort-mode .sort-handle{display:block;}
       <input type="text" id="mag_citta" class="proc-select" placeholder="CITTÀ..." style="width:100%;margin-bottom:6px;text-transform:uppercase;">
       <input type="text" id="mag_edificio" class="proc-select" placeholder="IDENTIFICATIVO EDIFICIO..." style="width:100%;margin-bottom:6px;text-transform:uppercase;">
       <input type="text" id="mag_via" class="proc-select" placeholder="VIA..." style="width:100%;margin-bottom:6px;text-transform:uppercase;">
-      <input type="text" id="mag_civico" class="proc-select" placeholder="CIVICO" style="width:100%;margin-bottom:8px;">
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <input type="text" id="mag_civico" class="proc-select" placeholder="CIVICO" style="flex:1;">
+        <input type="text" id="mag_cap" class="proc-select" placeholder="CAP" style="flex:1;">
+        <input type="text" id="mag_provincia" class="proc-select" placeholder="PROV" style="flex:0.7;text-transform:uppercase;">
+      </div>
       <div style="display:flex;gap:6px;">
         <button type="button" class="ana-save-btn" style="flex:1;" onclick="saveMagazzino()">SALVA MAGAZZINO</button>
         <button type="button" class="ana-cancel-btn" onclick="cancelAnaInline('cMagazzino')">✕</button>
@@ -1308,7 +1312,7 @@ let selectedSpecialita = []; // array of {id, name}
 async function loadContractLookups(){
   const [cl,ma,mr,bt,se,sp,te,un] = await Promise.all([
     sb.from('clienti').select('id,name').order('name'),
-    sb.from('magazzini').select('id,nome,citta,via,civico,edificio').order('nome'),
+    sb.from('magazzini').select('id,nome,citta,via,civico,cap,provincia,edificio').order('nome'),
     sb.from('marchi').select('id,name').order('name'),
     sb.from('business_types').select('id,name').order('name'),
     sb.from('settori').select('id,name').order('name'),
@@ -1436,16 +1440,18 @@ async function saveMagazzino(){
   const edificio = document.getElementById('mag_edificio')?.value.trim().toUpperCase()||'';
   const via = document.getElementById('mag_via')?.value.trim().toUpperCase()||'';
   const civico = document.getElementById('mag_civico')?.value.trim()||'';
+  const cap = document.getElementById('mag_cap')?.value.trim()||'';
+  const provincia = document.getElementById('mag_provincia')?.value.trim().toUpperCase()||'';
   if(!citta||!edificio){ toast('Inserisci almeno città e identificativo'); return; }
   const nome = citta+'-'+edificio;
   try{
-    const {data,error} = await sb.from('magazzini').insert({nome,citta,via,civico,edificio,created_by:currentUser.id}).select().single();
+    const {data,error} = await sb.from('magazzini').insert({nome,citta,via,civico,cap,provincia,edificio,created_by:currentUser.id}).select().single();
     if(error) throw error;
     contractLookups.magazzini.push(data);
     const sel = document.getElementById('cMagazzino');
     const opt = document.createElement('option'); opt.value=data.id; opt.textContent=data.nome+' · '+data.citta;
     sel.appendChild(opt); sel.value=data.id;
-    ['mag_citta','mag_edificio','mag_via','mag_civico'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+    ['mag_citta','mag_edificio','mag_via','mag_civico','mag_cap','mag_provincia'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
     cancelAnaInline('cMagazzino'); updateContractPreview();
     toast('✓ Magazzino "'+nome+'" aggiunto');
   }catch(e){
@@ -2509,10 +2515,16 @@ async function loadAnagraficheAdmin(){
         body.insertAdjacentHTML('beforeend',
           '<div class="ana-add-row" style="flex-direction:column;gap:6px;margin-top:10px;">'+
             '<div style="font-size:10px;color:var(--dim);font-family:Share Tech Mono,monospace;letter-spacing:1px;">NUOVO MAGAZZINO</div>'+
-            '<input class="ana-new-input" id="adm_mag_citta" placeholder="CITTÀ">'+
-            '<input class="ana-new-input" id="adm_mag_edificio" placeholder="IDENTIFICATIVO EDIFICIO">'+
+            '<div style="display:flex;gap:6px;">'+
+            '<input class="ana-new-input" id="adm_mag_citta" placeholder="CITTÀ" style="flex:1;">'+
+            '<input class="ana-new-input" id="adm_mag_edificio" placeholder="ID EDIFICIO" style="flex:1;">'+
+            '</div>'+
             '<input class="ana-new-input" id="adm_mag_via" placeholder="VIA">'+
-            '<input class="ana-new-input" id="adm_mag_civico" placeholder="CIVICO" style="text-transform:none">'+
+            '<div style="display:flex;gap:6px;">'+
+            '<input class="ana-new-input" id="adm_mag_civico" placeholder="CIVICO" style="flex:1;text-transform:none;">'+
+            '<input class="ana-new-input" id="adm_mag_cap" placeholder="CAP" style="flex:1;text-transform:none;">'+
+            '<input class="ana-new-input" id="adm_mag_provincia" placeholder="PROV" style="flex:0.7;">'+
+            '</div>'+
             '<button class="ana-save-btn" style="width:100%;padding:10px;" id="adm_mag_btn">＋ AGGIUNGI MAGAZZINO</button>'+
           '</div>'
         );
@@ -2521,10 +2533,12 @@ async function loadAnagraficheAdmin(){
           const edificio=(document.getElementById('adm_mag_edificio')?.value||'').trim().toUpperCase();
           const via=(document.getElementById('adm_mag_via')?.value||'').trim().toUpperCase();
           const civico=(document.getElementById('adm_mag_civico')?.value||'').trim();
+          const cap=(document.getElementById('adm_mag_cap')?.value||'').trim();
+          const provincia=(document.getElementById('adm_mag_provincia')?.value||'').trim().toUpperCase();
           if(!citta||!edificio){ toast('Città e edificio obbligatori'); return; }
           const nome=citta+'-'+edificio;
           try{
-            const {error}=await sb.from('magazzini').insert({nome,citta,via,civico,edificio,created_by:currentUser.id});
+            const {error}=await sb.from('magazzini').insert({nome,citta,via,civico,cap,provincia,edificio,created_by:currentUser.id});
             if(error) throw error;
             await loadAnagraficheAdmin(); toast('Magazzino aggiunto');
           }catch(e){ toast('⚠ '+e.message); }
