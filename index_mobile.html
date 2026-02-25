@@ -149,6 +149,32 @@ body.sort-mode .sort-handle{display:block;}
 .qty-btn:active{opacity:.65;transform:scale(.93);}
 .qty-input{font-family:'Share Tech Mono',monospace;font-size:38px;color:var(--orange);background:transparent;border:none;outline:none;text-align:center;width:90px;caret-color:var(--orange);}
 .rec-qty{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--cyan);white-space:nowrap;padding:1px 6px;background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.2);border-radius:3px;}
+.ana-add-btn{flex-shrink:0;background:var(--card);border:1px solid var(--border2);color:var(--dim);width:34px;height:34px;border-radius:6px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:700;}
+.ana-add-btn:active{opacity:.6;}
+.ana-save-btn{flex-shrink:0;background:var(--purple);border:none;color:#000;padding:0 12px;height:34px;border-radius:6px;font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.ana-cancel-btn{flex-shrink:0;background:var(--card);border:1px solid var(--border2);color:var(--dim);padding:0 10px;height:34px;border-radius:6px;font-size:13px;cursor:pointer;}
+.specialita-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(179,136,255,0.15);border:1px solid var(--purple);border-radius:4px;padding:3px 8px;font-size:11px;font-weight:700;color:var(--purple);font-family:'Rajdhani',sans-serif;}
+.specialita-chip-remove{cursor:pointer;color:var(--red);font-size:13px;line-height:1;}
+.specialita-chip-remove:hover{opacity:.7;}
+/* ANAGRAFICHE admin section */
+.ana-section{background:var(--card);border:1px solid var(--border2);border-radius:8px;margin-bottom:10px;overflow:hidden;}
+.ana-section-header{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;cursor:pointer;background:var(--card2);}
+.ana-section-title{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--text);text-transform:uppercase;}
+.ana-section-count{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;}
+.ana-section-body{display:none;padding:10px 14px 14px;}
+.ana-section.open .ana-section-body{display:block;}
+.ana-tag{display:inline-flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border2);border-radius:4px;padding:4px 8px;font-size:12px;font-weight:600;margin:3px;cursor:default;}
+.ana-tag-del{color:var(--red);cursor:pointer;font-size:13px;padding:0 2px;}
+.ana-tag-del:hover{opacity:.7;}
+.ana-add-row{display:flex;gap:6px;margin-top:10px;}
+.ana-new-input{flex:1;padding:8px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;outline:none;text-transform:uppercase;}
+.ana-new-input:focus{border-color:var(--purple);}
+.mag-form{background:var(--card2);border:1px solid var(--border2);border-radius:6px;padding:10px;margin-bottom:8px;}
+.mag-item{display:flex;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);}
+.mag-item:last-child{border-bottom:none;}
+.mag-item-info{flex:1;}
+.mag-item-name{font-size:13px;font-weight:700;}
+.mag-item-meta{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:2px;}
 
 /* ── FOOTER ── */
 .footer{flex-shrink:0;display:flex;border-top:1px solid var(--border);background:var(--panel);}
@@ -454,6 +480,7 @@ body.sort-mode .sort-handle{display:block;}
   <div class="admin-tabs">
     <div class="admin-tab active" onclick="switchAdminTab('users')">👥 UTENTI</div>
     <div class="admin-tab" onclick="switchAdminTab('projects')">📁 PROGETTI</div>
+    <div class="admin-tab" onclick="switchAdminTab('anagrafiche')">🗂 ANAGR.</div>
   </div>
   <div class="admin-body">
     <div class="admin-section active" id="adminUsers">
@@ -482,6 +509,9 @@ body.sort-mode .sort-handle{display:block;}
         <button class="form-submit purple" onclick="adminCreateProject()">＋ CREA PROGETTO</button>
       </div>
       <div id="projectAdminList"></div>
+    </div>
+    <div class="admin-section" id="adminAnagrafiche">
+      <div id="anagraficheList"></div>
     </div>
   </div>
 </div>
@@ -578,11 +608,150 @@ body.sort-mode .sort-handle{display:block;}
   <p class="exp-note">Su mobile: condivisione nativa con file allegato.<br>Su PC: download diretto.</p>
 </div></div>
 
-<div class="overlay" id="newContractOverlay"><div class="sheet">
+<div class="overlay" id="newContractOverlay"><div class="sheet" style="max-height:92vh;">
   <div class="sheet-title">NUOVO APPALTO</div>
-  <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:12px;letter-spacing:1px;">CLIENTE · MAGAZZINO · MARCHIO</div>
-  <input class="text-input" id="newContractInput" type="text" maxlength="80" placeholder="es. Esselunga · Via Roma 1 · Coca-Cola">
-  <button class="confirm-btn" onclick="doCreateContract()" style="background:var(--purple);">CREA APPALTO</button>
+
+  <!-- CLIENTE -->
+  <div class="proc-field">
+    <label class="proc-label">Cliente *</label>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <select class="proc-select" id="cCliente"></select>
+      <button type="button" class="ana-add-btn" onclick="toggleAnaInline('cCliente')">+</button>
+    </div>
+    <div id="cCliente_new" style="display:none;margin-top:6px;">
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="cCliente_input" class="proc-select" placeholder="RAGIONE SOCIALE..." style="flex:1;text-transform:uppercase;">
+        <button type="button" class="ana-save-btn" onclick="saveAnaInline('cCliente','clienti')">SALVA</button>
+        <button type="button" class="ana-cancel-btn" onclick="cancelAnaInline('cCliente')">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAGAZZINO -->
+  <div class="proc-field">
+    <label class="proc-label">Magazzino *</label>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <select class="proc-select" id="cMagazzino"></select>
+      <button type="button" class="ana-add-btn" onclick="toggleMagazzino()">+</button>
+    </div>
+    <div id="cMagazzino_new" style="display:none;margin-top:6px;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:10px;">
+      <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:8px;">NUOVO MAGAZZINO</div>
+      <input type="text" id="mag_citta" class="proc-select" placeholder="CITTÀ..." style="width:100%;margin-bottom:6px;text-transform:uppercase;">
+      <input type="text" id="mag_edificio" class="proc-select" placeholder="IDENTIFICATIVO EDIFICIO..." style="width:100%;margin-bottom:6px;text-transform:uppercase;">
+      <input type="text" id="mag_via" class="proc-select" placeholder="VIA..." style="width:100%;margin-bottom:6px;text-transform:uppercase;">
+      <input type="text" id="mag_civico" class="proc-select" placeholder="CIVICO" style="width:100%;margin-bottom:8px;">
+      <div style="display:flex;gap:6px;">
+        <button type="button" class="ana-save-btn" style="flex:1;" onclick="saveMagazzino()">SALVA MAGAZZINO</button>
+        <button type="button" class="ana-cancel-btn" onclick="cancelAnaInline('cMagazzino')">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MARCHIO -->
+  <div class="proc-field">
+    <label class="proc-label">Marchio</label>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <select class="proc-select" id="cMarchio"></select>
+      <button type="button" class="ana-add-btn" onclick="toggleAnaInline('cMarchio')">+</button>
+    </div>
+    <div id="cMarchio_new" style="display:none;margin-top:6px;">
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="cMarchio_input" class="proc-select" placeholder="MARCHIO..." style="flex:1;text-transform:uppercase;">
+        <button type="button" class="ana-save-btn" onclick="saveAnaInline('cMarchio','marchi')">SALVA</button>
+        <button type="button" class="ana-cancel-btn" onclick="cancelAnaInline('cMarchio')">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUSINESS -->
+  <div class="proc-field">
+    <label class="proc-label">Business *</label>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <select class="proc-select" id="cBusiness"></select>
+      <button type="button" class="ana-add-btn" onclick="toggleAnaInline('cBusiness')">+</button>
+    </div>
+    <div id="cBusiness_new" style="display:none;margin-top:6px;">
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="cBusiness_input" class="proc-select" placeholder="BUSINESS..." style="flex:1;text-transform:uppercase;">
+        <button type="button" class="ana-save-btn" onclick="saveAnaInline('cBusiness','business_types')">SALVA</button>
+        <button type="button" class="ana-cancel-btn" onclick="cancelAnaInline('cBusiness')">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTORE -->
+  <div class="proc-field">
+    <label class="proc-label">Settore *</label>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <select class="proc-select" id="cSettore"></select>
+      <button type="button" class="ana-add-btn" onclick="toggleAnaInline('cSettore')">+</button>
+    </div>
+    <div id="cSettore_new" style="display:none;margin-top:6px;">
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="cSettore_input" class="proc-select" placeholder="SETTORE..." style="flex:1;text-transform:uppercase;">
+        <button type="button" class="ana-save-btn" onclick="saveAnaInline('cSettore','settori')">SALVA</button>
+        <button type="button" class="ana-cancel-btn" onclick="cancelAnaInline('cSettore')">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPECIALITÀ (multi-select) -->
+  <div class="proc-field">
+    <label class="proc-label">Specialità</label>
+    <div id="cSpecialitaChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;"></div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <select class="proc-select" id="cSpecialita"></select>
+      <button type="button" class="ana-add-btn" onclick="addSpecialitaChip()">＋</button>
+      <button type="button" class="ana-add-btn" onclick="toggleAnaInline('cSpecialita')">new</button>
+    </div>
+    <div id="cSpecialita_new" style="display:none;margin-top:6px;">
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="cSpecialita_input" class="proc-select" placeholder="SPECIALITÀ..." style="flex:1;text-transform:uppercase;">
+        <button type="button" class="ana-save-btn" onclick="saveAnaInline('cSpecialita','specialita')">SALVA</button>
+        <button type="button" class="ana-cancel-btn" onclick="cancelAnaInline('cSpecialita')">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEMPERATURA -->
+  <div class="proc-field">
+    <label class="proc-label">Temperatura *</label>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <select class="proc-select" id="cTemperatura"></select>
+      <button type="button" class="ana-add-btn" onclick="toggleAnaInline('cTemperatura')">+</button>
+    </div>
+    <div id="cTemperatura_new" style="display:none;margin-top:6px;">
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="cTemperatura_input" class="proc-select" placeholder="TEMPERATURA..." style="flex:1;text-transform:uppercase;">
+        <button type="button" class="ana-save-btn" onclick="saveAnaInline('cTemperatura','temperature')">SALVA</button>
+        <button type="button" class="ana-cancel-btn" onclick="cancelAnaInline('cTemperatura')">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- UNITÀ MOVIMENTAZIONE -->
+  <div class="proc-field">
+    <label class="proc-label">Unità di movimentazione *</label>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <select class="proc-select" id="cUnita"></select>
+      <button type="button" class="ana-add-btn" onclick="toggleAnaInline('cUnita')">+</button>
+    </div>
+    <div id="cUnita_new" style="display:none;margin-top:6px;">
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="cUnita_input" class="proc-select" placeholder="UNITÀ..." style="flex:1;text-transform:uppercase;">
+        <button type="button" class="ana-save-btn" onclick="saveAnaInline('cUnita','unita_movimentazione')">SALVA</button>
+        <button type="button" class="ana-cancel-btn" onclick="cancelAnaInline('cUnita')">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANTEPRIMA NOME -->
+  <div style="background:var(--card2);border:1px solid var(--border2);border-radius:6px;padding:10px 12px;margin-top:4px;">
+    <div style="font-size:9px;color:var(--dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:4px;">NOME APPALTO (GENERATO)</div>
+    <div id="contractPreview" style="font-size:13px;font-weight:700;color:var(--orange);">—</div>
+  </div>
+
+  <button class="confirm-btn" onclick="doCreateContract()" style="background:var(--purple);margin-top:14px;">CREA APPALTO</button>
   <button class="sheet-cancel" onclick="closeSheet('newContractOverlay')">Annulla</button>
 </div></div>
 
@@ -1132,24 +1301,189 @@ async function selectProcess(proc, label){
   finally{ hideLoading(); setTimeout(()=>renderAll(),80); }
 }
 
-function openNewContractSheet(){
-  document.getElementById('newContractInput').value='';
+/* ── ANAGRAFICHE LOOKUP ── */
+let contractLookups = { clienti:[], magazzini:[], marchi:[], business_types:[], settori:[], specialita:[], temperature:[], unita_movimentazione:[] };
+let selectedSpecialita = []; // array of {id, name}
+
+async function loadContractLookups(){
+  const [cl,ma,mr,bt,se,sp,te,un] = await Promise.all([
+    sb.from('clienti').select('id,name').order('name'),
+    sb.from('magazzini').select('id,nome,citta,via,civico,edificio').order('nome'),
+    sb.from('marchi').select('id,name').order('name'),
+    sb.from('business_types').select('id,name').order('name'),
+    sb.from('settori').select('id,name').order('name'),
+    sb.from('specialita').select('id,name').order('name'),
+    sb.from('temperature').select('id,name').order('name'),
+    sb.from('unita_movimentazione').select('id,name').order('name'),
+  ]);
+  contractLookups.clienti = cl.data||[];
+  contractLookups.magazzini = ma.data||[];
+  contractLookups.marchi = mr.data||[];
+  contractLookups.business_types = bt.data||[];
+  contractLookups.settori = se.data||[];
+  contractLookups.specialita = sp.data||[];
+  contractLookups.temperature = te.data||[];
+  contractLookups.unita_movimentazione = un.data||[];
+}
+
+function populateContractSelects(){
+  const fill = (id, arr, labelFn, empty='— seleziona —', allowNone=false) => {
+    const el = document.getElementById(id); if(!el) return;
+    el.innerHTML = (allowNone ? '<option value="">— nessuno —</option>' : '<option value="">'+empty+'</option>') +
+      arr.map(x=>'<option value="'+x.id+'">'+esc(labelFn(x))+'</option>').join('');
+  };
+  fill('cCliente',    contractLookups.clienti,              x=>x.name);
+  fill('cMagazzino',  contractLookups.magazzini,            x=>x.nome+(x.citta?' · '+x.citta:''));
+  fill('cMarchio',    contractLookups.marchi,               x=>x.name, '— nessuno —', true);
+  fill('cBusiness',   contractLookups.business_types,       x=>x.name);
+  fill('cSettore',    contractLookups.settori,              x=>x.name);
+  fill('cSpecialita', contractLookups.specialita,           x=>x.name);
+  fill('cTemperatura',contractLookups.temperature,          x=>x.name);
+  fill('cUnita',      contractLookups.unita_movimentazione, x=>x.name);
+  updateContractPreview();
+}
+
+function updateContractPreview(){
+  const clienteEl = document.getElementById('cCliente');
+  const magazzinoEl = document.getElementById('cMagazzino');
+  const marchioEl = document.getElementById('cMarchio');
+  const clienteName = clienteEl?.selectedOptions[0]?.text || '';
+  const magazzinoName = magazzinoEl?.selectedOptions[0]?.text || '';
+  const marchioName = marchioEl?.value ? marchioEl.selectedOptions[0].text : '';
+  const parts = [clienteName, magazzinoName, marchioName].filter(s=>s && s!=='— seleziona —' && s!=='— nessuno —');
+  document.getElementById('contractPreview').textContent = parts.length ? parts.join(' · ') : '—';
+}
+
+async function openNewContractSheet(){
+  selectedSpecialita = [];
+  showLoading('CARICAMENTO...');
+  try{ await loadContractLookups(); }
+  catch(e){ toast('⚠ '+e.message); hideLoading(); return; }
+  finally{ hideLoading(); }
+  populateContractSelects();
+  renderSpecialitaChips();
+  // Attach preview listeners
+  ['cCliente','cMagazzino','cMarchio'].forEach(id=>{
+    document.getElementById(id)?.addEventListener('change', updateContractPreview);
+  });
   showSheet('newContractOverlay');
-  setTimeout(()=>document.getElementById('newContractInput').focus(),120);
+}
+
+function renderSpecialitaChips(){
+  const wrap = document.getElementById('cSpecialitaChips'); if(!wrap) return;
+  wrap.innerHTML = selectedSpecialita.map(s=>
+    '<span class="specialita-chip">'+esc(s.name)+
+    '<span class="specialita-chip-remove" data-id="'+s.id+'">✕</span></span>'
+  ).join('');
+  wrap.querySelectorAll('.specialita-chip-remove').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      selectedSpecialita = selectedSpecialita.filter(s=>s.id!==btn.dataset.id);
+      renderSpecialitaChips();
+    });
+  });
+}
+
+function addSpecialitaChip(){
+  const sel = document.getElementById('cSpecialita'); if(!sel||!sel.value) return;
+  const id=sel.value, name=sel.selectedOptions[0].text;
+  if(selectedSpecialita.find(s=>s.id===id)){ toast('Già selezionata'); return; }
+  selectedSpecialita.push({id,name});
+  renderSpecialitaChips();
+}
+
+/* Inline add helpers for contract form */
+function toggleAnaInline(fieldId){
+  const wrap = document.getElementById(fieldId+'_new'); if(!wrap) return;
+  wrap.style.display = wrap.style.display==='none'?'block':'none';
+  if(wrap.style.display==='block') setTimeout(()=>document.getElementById(fieldId+'_input')?.focus(),80);
+}
+function cancelAnaInline(fieldId){
+  const wrap = document.getElementById(fieldId+'_new'); if(!wrap) return;
+  wrap.style.display='none';
+  const inp = document.getElementById(fieldId+'_input'); if(inp) inp.value='';
+  const magWrap = document.getElementById('cMagazzino_new'); if(fieldId==='cMagazzino'&&magWrap) magWrap.style.display='none';
+}
+function toggleMagazzino(){
+  const wrap = document.getElementById('cMagazzino_new'); if(!wrap) return;
+  wrap.style.display = wrap.style.display==='none'?'block':'none';
+  if(wrap.style.display==='block') setTimeout(()=>document.getElementById('mag_citta')?.focus(),80);
+}
+
+async function saveAnaInline(fieldId, table){
+  const inp = document.getElementById(fieldId+'_input');
+  const name = inp?.value.trim().toUpperCase(); if(!name){ inp?.focus(); return; }
+  try{
+    const {data,error} = await sb.from(table).insert({name,created_by:currentUser.id}).select().single();
+    if(error) throw error;
+    // Determina quale array aggiornare
+    const key = table; // stesso nome
+    if(!contractLookups[key]) contractLookups[key]=[];
+    contractLookups[key].push({id:data.id,name:data.name});
+    contractLookups[key].sort((a,b)=>a.name.localeCompare(b.name));
+    // Aggiorna select e seleziona
+    const sel = document.getElementById(fieldId);
+    const opt = document.createElement('option'); opt.value=data.id; opt.textContent=data.name;
+    sel.appendChild(opt); sel.value=data.id;
+    cancelAnaInline(fieldId); updateContractPreview();
+    toast('✓ "'+name+'" aggiunto');
+  }catch(e){
+    toast(e.message.includes('unique')||e.message.includes('duplicate') ? 'Esiste già: "'+name+'"' : '⚠ '+e.message);
+  }
+}
+
+async function saveMagazzino(){
+  const citta = document.getElementById('mag_citta')?.value.trim().toUpperCase()||'';
+  const edificio = document.getElementById('mag_edificio')?.value.trim().toUpperCase()||'';
+  const via = document.getElementById('mag_via')?.value.trim().toUpperCase()||'';
+  const civico = document.getElementById('mag_civico')?.value.trim()||'';
+  if(!citta||!edificio){ toast('Inserisci almeno città e identificativo'); return; }
+  const nome = citta+'-'+edificio;
+  try{
+    const {data,error} = await sb.from('magazzini').insert({nome,citta,via,civico,edificio,created_by:currentUser.id}).select().single();
+    if(error) throw error;
+    contractLookups.magazzini.push(data);
+    const sel = document.getElementById('cMagazzino');
+    const opt = document.createElement('option'); opt.value=data.id; opt.textContent=data.nome+' · '+data.citta;
+    sel.appendChild(opt); sel.value=data.id;
+    ['mag_citta','mag_edificio','mag_via','mag_civico'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+    cancelAnaInline('cMagazzino'); updateContractPreview();
+    toast('✓ Magazzino "'+nome+'" aggiunto');
+  }catch(e){
+    toast(e.message.includes('unique')||e.message.includes('duplicate') ? 'Magazzino già esistente' : '⚠ '+e.message);
+  }
 }
 
 async function doCreateContract(){
-  const name=document.getElementById('newContractInput').value.trim();
-  if(!name){document.getElementById('newContractInput').focus();return;}
+  const clienteId  = document.getElementById('cCliente')?.value;
+  const magazzinoId= document.getElementById('cMagazzino')?.value;
+  const marchioId  = document.getElementById('cMarchio')?.value || null;
+  const businessId = document.getElementById('cBusiness')?.value;
+  const settoreId  = document.getElementById('cSettore')?.value;
+  const temperaturaId=document.getElementById('cTemperatura')?.value;
+  const unitaId    = document.getElementById('cUnita')?.value;
+  if(!clienteId||!magazzinoId||!businessId||!settoreId||!temperaturaId||!unitaId){
+    toast('Compila i campi obbligatori (*)'); return;
+  }
+  const name = document.getElementById('contractPreview')?.textContent || '—';
   try{
-    const {error}=await sb.from('contracts').insert({name,created_by:currentUser.id});
-    if(error)throw error;
+    const {data,error}=await sb.from('contracts').insert({
+      name, created_by:currentUser.id,
+      cliente_id:clienteId, magazzino_id:magazzinoId, marchio_id:marchioId,
+      business_id:businessId, settore_id:settoreId,
+      temperatura_id:temperaturaId, unita_id:unitaId
+    }).select().single();
+    if(error) throw error;
+    // Inserisci specialità
+    if(selectedSpecialita.length){
+      await sb.from('contract_specialita').insert(
+        selectedSpecialita.map(s=>({contract_id:data.id, specialita_id:s.id}))
+      );
+    }
     closeSheet('newContractOverlay');
     await loadContracts();
     toast('Appalto "'+name+'" creato');
   }catch(e){
-    const inp=document.getElementById('newContractInput'); inp.style.borderColor='var(--red)';
-    toast('⚠ '+e.message); setTimeout(()=>inp.style.borderColor='',2000);
+    toast('⚠ '+e.message);
   }
 }
 
@@ -1683,7 +2017,6 @@ async function doCreateProject(){
   }
 }
 document.getElementById('newProjInput').addEventListener('keydown',e=>{if(e.key==='Enter')doCreateProject();});
-document.getElementById('newContractInput').addEventListener('keydown',e=>{if(e.key==='Enter')doCreateContract();});
 async function doRenameProj(){
   const name=document.getElementById('renameProjInput').value.trim(); if(!name){document.getElementById('renameProjInput').focus();return;}
   try {
@@ -1900,9 +2233,12 @@ async function doExport(){
 function openAdminPanel(){ loadAdminData(); document.getElementById('adminScreen').classList.add('show'); }
 function closeAdminPanel(){ document.getElementById('adminScreen').classList.remove('show'); }
 function switchAdminTab(tab){
-  document.querySelectorAll('.admin-tab').forEach((t,i)=>t.classList.toggle('active',['users','projects'][i]===tab));
+  const tabs=['users','projects','anagrafiche'];
+  document.querySelectorAll('.admin-tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===tab));
   document.getElementById('adminUsers').classList.toggle('active',tab==='users');
   document.getElementById('adminProjects').classList.toggle('active',tab==='projects');
+  document.getElementById('adminAnagrafiche').classList.toggle('active',tab==='anagrafiche');
+  if(tab==='anagrafiche') loadAnagraficheAdmin();
 }
 async function loadAdminData(){ await Promise.all([loadUserList(),loadProjectAdminList(),loadContractSelect()]); }
 
@@ -2114,6 +2450,108 @@ async function adminCreateProject(){
     await loadProjectAdminList(); await loadContractSelect();
     toast('Progetto creato');
   }catch(e){toast('⚠ '+e.message);}
+}
+
+/* ── ANAGRAFICHE ADMIN ── */
+const ANA_TABLES = [
+  { key:'clienti',              label:'CLIENTI',                   nameField:'name' },
+  { key:'magazzini',            label:'MAGAZZINI',                 nameField:'nome', extra:true },
+  { key:'marchi',               label:'MARCHI',                    nameField:'name' },
+  { key:'business_types',       label:'BUSINESS',                  nameField:'name' },
+  { key:'settori',              label:'SETTORI',                   nameField:'name' },
+  { key:'specialita',           label:'SPECIALITÀ',                nameField:'name' },
+  { key:'temperature',          label:'TEMPERATURE',               nameField:'name' },
+  { key:'unita_movimentazione', label:'UNITÀ DI MOVIMENTAZIONE',   nameField:'name' },
+];
+
+async function loadAnagraficheAdmin(){
+  const wrap = document.getElementById('anagraficheList'); wrap.innerHTML='';
+  showLoading('CARICAMENTO...');
+  try{
+    const results = await Promise.all(ANA_TABLES.map(t=>sb.from(t.key).select('*').order(t.nameField)));
+    ANA_TABLES.forEach((t,i)=>{
+      const rows = results[i].data||[];
+      const section = document.createElement('div'); section.className='ana-section';
+      section.innerHTML=
+        '<div class="ana-section-header">'+
+          '<span class="ana-section-title">'+t.label+'</span>'+
+          '<span class="ana-section-count">'+rows.length+' voci</span>'+
+        '</div>'+
+        '<div class="ana-section-body"></div>';
+      section.querySelector('.ana-section-header').addEventListener('click',()=>section.classList.toggle('open'));
+      const body = section.querySelector('.ana-section-body');
+
+      // Tags
+      const tagWrap = document.createElement('div'); tagWrap.style.cssText='display:flex;flex-wrap:wrap;';
+      rows.forEach(r=>{
+        const tag = document.createElement('span'); tag.className='ana-tag';
+        const displayName = t.key==='magazzini'
+          ? (r.nome+(r.citta?' · '+r.citta:''))
+          : r[t.nameField];
+        tag.innerHTML=esc(displayName)+
+          (currentUser.role==='admin'?'<span class="ana-tag-del" data-id="'+r.id+'" data-table="'+t.key+'">✕</span>':'');
+        tagWrap.appendChild(tag);
+      });
+      body.appendChild(tagWrap);
+      body.querySelectorAll('.ana-tag-del').forEach(btn=>{
+        btn.addEventListener('click',async()=>{
+          if(!confirm('Eliminare questo elemento?')) return;
+          try{
+            const {error}=await sb.from(btn.dataset.table).delete().eq('id',btn.dataset.id);
+            if(error) throw error;
+            await loadAnagraficheAdmin(); toast('Eliminato');
+          }catch(e){ toast('⚠ '+e.message); }
+        });
+      });
+
+      // Add form
+      if(t.key==='magazzini'){
+        body.insertAdjacentHTML('beforeend',
+          '<div class="ana-add-row" style="flex-direction:column;gap:6px;margin-top:10px;">'+
+            '<div style="font-size:10px;color:var(--dim);font-family:Share Tech Mono,monospace;letter-spacing:1px;">NUOVO MAGAZZINO</div>'+
+            '<input class="ana-new-input" id="adm_mag_citta" placeholder="CITTÀ">'+
+            '<input class="ana-new-input" id="adm_mag_edificio" placeholder="IDENTIFICATIVO EDIFICIO">'+
+            '<input class="ana-new-input" id="adm_mag_via" placeholder="VIA">'+
+            '<input class="ana-new-input" id="adm_mag_civico" placeholder="CIVICO" style="text-transform:none">'+
+            '<button class="ana-save-btn" style="width:100%;padding:10px;" id="adm_mag_btn">＋ AGGIUNGI MAGAZZINO</button>'+
+          '</div>'
+        );
+        body.querySelector('#adm_mag_btn').addEventListener('click', async()=>{
+          const citta=(document.getElementById('adm_mag_citta')?.value||'').trim().toUpperCase();
+          const edificio=(document.getElementById('adm_mag_edificio')?.value||'').trim().toUpperCase();
+          const via=(document.getElementById('adm_mag_via')?.value||'').trim().toUpperCase();
+          const civico=(document.getElementById('adm_mag_civico')?.value||'').trim();
+          if(!citta||!edificio){ toast('Città e edificio obbligatori'); return; }
+          const nome=citta+'-'+edificio;
+          try{
+            const {error}=await sb.from('magazzini').insert({nome,citta,via,civico,edificio,created_by:currentUser.id});
+            if(error) throw error;
+            await loadAnagraficheAdmin(); toast('Magazzino aggiunto');
+          }catch(e){ toast('⚠ '+e.message); }
+        });
+      } else {
+        body.insertAdjacentHTML('beforeend',
+          '<div class="ana-add-row">'+
+            '<input class="ana-new-input" id="adm_new_'+t.key+'" placeholder="NUOVO VALORE...">'+
+            '<button class="ana-save-btn" data-table="'+t.key+'" data-field="'+t.nameField+'">＋</button>'+
+          '</div>'
+        );
+        body.querySelector('button.ana-save-btn[data-table]').addEventListener('click', async e=>{
+          const inp=document.getElementById('adm_new_'+e.currentTarget.dataset.table);
+          const name=(inp?.value||'').trim().toUpperCase(); if(!name){ inp?.focus(); return; }
+          try{
+            const obj={}; obj[e.currentTarget.dataset.field]=name;
+            const {error}=await sb.from(e.currentTarget.dataset.table).insert(obj);
+            if(error) throw error;
+            await loadAnagraficheAdmin(); toast('"'+name+'" aggiunto');
+          }catch(e){ toast(e.message.includes('unique')||e.message.includes('duplicate') ? 'Esiste già' : '⚠ '+e.message); }
+        });
+      }
+
+      wrap.appendChild(section);
+    });
+  }catch(e){ wrap.innerHTML='<div style="color:var(--red);padding:20px;font-family:Share Tech Mono,monospace;font-size:11px;">'+esc(e.message)+'</div>'; }
+  finally{ hideLoading(); }
 }
 
 /* ── SHEET HELPERS ── */
