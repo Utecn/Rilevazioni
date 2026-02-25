@@ -637,7 +637,7 @@ body.sort-mode .sort-handle{display:block;}
     <div id="cMagazzino_new" style="display:none;margin-top:6px;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:10px;">
       <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:8px;">NUOVO MAGAZZINO</div>
       <input type="text" id="mag_citta" class="proc-select" placeholder="CITTÀ..." style="width:100%;margin-bottom:6px;text-transform:uppercase;">
-      <input type="text" id="mag_edificio" class="proc-select" placeholder="IDENTIFICATIVO EDIFICIO..." style="width:100%;margin-bottom:6px;text-transform:uppercase;">
+      <input type="text" id="mag_edificio" class="proc-select" placeholder="ID EDIFICIO (opz.)" style="width:100%;margin-bottom:6px;text-transform:uppercase;">
       <input type="text" id="mag_via" class="proc-select" placeholder="VIA..." style="width:100%;margin-bottom:6px;text-transform:uppercase;">
       <div style="display:flex;gap:6px;margin-bottom:6px;">
         <input type="text" id="mag_civico" class="proc-select" placeholder="CIVICO" style="flex:1;">
@@ -1442,7 +1442,7 @@ async function saveMagazzino(){
   const civico = document.getElementById('mag_civico')?.value.trim()||'';
   const cap = document.getElementById('mag_cap')?.value.trim()||'';
   const provincia = document.getElementById('mag_provincia')?.value.trim().toUpperCase()||'';
-  if(!citta||!edificio){ toast('Inserisci almeno città e identificativo'); return; }
+  if(!citta){ toast('Inserisci almeno la città'); return; }
   const nome = citta+'-'+edificio;
   try{
     const {data,error} = await sb.from('magazzini').insert({nome,citta,via,civico,cap,provincia,edificio,created_by:currentUser.id}).select().single();
@@ -2517,7 +2517,7 @@ async function loadAnagraficheAdmin(){
             '<div style="font-size:10px;color:var(--dim);font-family:Share Tech Mono,monospace;letter-spacing:1px;">NUOVO MAGAZZINO</div>'+
             '<div style="display:flex;gap:6px;">'+
             '<input class="ana-new-input" id="adm_mag_citta" placeholder="CITTÀ" style="flex:1;">'+
-            '<input class="ana-new-input" id="adm_mag_edificio" placeholder="ID EDIFICIO" style="flex:1;">'+
+            '<input class="ana-new-input" id="adm_mag_edificio" placeholder="ID EDIFICIO (opz.)" style="flex:1;">'+
             '</div>'+
             '<input class="ana-new-input" id="adm_mag_via" placeholder="VIA">'+
             '<div style="display:flex;gap:6px;">'+
@@ -2535,7 +2535,7 @@ async function loadAnagraficheAdmin(){
           const civico=(document.getElementById('adm_mag_civico')?.value||'').trim();
           const cap=(document.getElementById('adm_mag_cap')?.value||'').trim();
           const provincia=(document.getElementById('adm_mag_provincia')?.value||'').trim().toUpperCase();
-          if(!citta||!edificio){ toast('Città e edificio obbligatori'); return; }
+          if(!citta){ toast('Città obbligatoria'); return; }
           const nome=citta+'-'+edificio;
           try{
             const {error}=await sb.from('magazzini').insert({nome,citta,via,civico,cap,provincia,edificio,created_by:currentUser.id});
