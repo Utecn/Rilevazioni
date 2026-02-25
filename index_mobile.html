@@ -2487,80 +2487,178 @@ async function loadAnagraficheAdmin(){
       section.querySelector('.ana-section-header').addEventListener('click',()=>section.classList.toggle('open'));
       const body = section.querySelector('.ana-section-body');
 
-      // Tags
-      const tagWrap = document.createElement('div'); tagWrap.style.cssText='display:flex;flex-wrap:wrap;';
+      // Tags — click nome = edit, click ✕ = delete
+      const tagWrap = document.createElement('div'); tagWrap.style.cssText='display:flex;flex-wrap:wrap;margin-bottom:4px;';
       rows.forEach(r=>{
-        const tag = document.createElement('span'); tag.className='ana-tag';
+        const tag = document.createElement('span'); tag.className='ana-tag'; tag.style.cursor='pointer';
         const displayName = t.key==='magazzini'
           ? (r.nome+(r.citta?' · '+r.citta:''))
           : r[t.nameField];
-        tag.innerHTML=esc(displayName)+
+        tag.dataset.id = r.id;
+        tag.innerHTML=
+          '<span class="ana-tag-name" style="text-decoration:underline;text-decoration-style:dotted;">'+esc(displayName)+'</span>'+
           (currentUser.role==='admin'?'<span class="ana-tag-del" data-id="'+r.id+'" data-table="'+t.key+'">✕</span>':'');
         tagWrap.appendChild(tag);
       });
       body.appendChild(tagWrap);
-      body.querySelectorAll('.ana-tag-del').forEach(btn=>{
-        btn.addEventListener('click',async()=>{
-          if(!confirm('Eliminare questo elemento?')) return;
-          try{
-            const {error}=await sb.from(btn.dataset.table).delete().eq('id',btn.dataset.id);
-            if(error) throw error;
-            await loadAnagraficheAdmin(); toast('Eliminato');
-          }catch(e){ toast('⚠ '+e.message); }
+
+      // Form container (add / edit)
+      const formWrap = document.createElement('div');
+      formWrap.style.cssText='margin-top:10px;';
+      body.appendChild(formWrap);
+
+      // Helper: render form in ADD or EDIT mode
+      function renderForm(editRow=null){
+        const isEdit = !!editRow;
+        formWrap.innerHTML='';
+
+        if(t.key==='magazzini'){
+          const citta    = isEdit ? (editRow.citta||'')    : '';
+          const edificio = isEdit ? (editRow.edificio||'') : '';
+          const via      = isEdit ? (editRow.via||'')      : '';
+          const civico   = isEdit ? (editRow.civico||'')   : '';
+          const cap      = isEdit ? (editRow.cap||'')      : '';
+          const provincia= isEdit ? (editRow.provincia||''): '';
+          formWrap.innerHTML=
+            '<div style="font-size:10px;color:'+(isEdit?'var(--orange)':'var(--dim)')+';font-family:Share Tech Mono,monospace;letter-spacing:1px;margin-bottom:8px;">'+
+              (isEdit?'✏ MODIFICA: '+esc(editRow.nome||''):'NUOVO MAGAZZINO')+
+            '</div>'+
+            '<div style="display:flex;gap:6px;margin-bottom:6px;">'+
+              '<input class="ana-new-input" id="adm_mag_citta" placeholder="CITTÀ *" value="'+esc(citta)+'" style="flex:1;">'+
+              '<input class="ana-new-input" id="adm_mag_edificio" placeholder="ID EDIFICIO (opz.)" value="'+esc(edificio)+'" style="flex:1;">'+
+            '</div>'+
+            '<input class="ana-new-input" id="adm_mag_via" placeholder="VIA" value="'+esc(via)+'" style="width:100%;margin-bottom:6px;">'+
+            '<div style="display:flex;gap:6px;margin-bottom:8px;">'+
+              '<input class="ana-new-input" id="adm_mag_civico" placeholder="CIVICO" value="'+esc(civico)+'" style="flex:1;text-transform:none;">'+
+              '<input class="ana-new-input" id="adm_mag_cap" placeholder="CAP" value="'+esc(cap)+'" style="flex:1;text-transform:none;">'+
+              '<input class="ana-new-input" id="adm_mag_provincia" placeholder="PROV" value="'+esc(provincia)+'" style="flex:0.7;">'+
+            '</div>'+
+            '<div style="display:flex;gap:6px;">'+
+              (isEdit
+                ? '<button class="ana-save-btn" id="adm_mag_save" style="flex:1;padding:10px;background:var(--orange);">💾 SALVA MODIFICHE</button>'+
+                  '<button class="ana-cancel-btn" id="adm_mag_cancel" style="padding:10px 14px;">✕</button>'+
+                  '<button class="ana-save-btn" id="adm_mag_del" style="padding:10px 14px;background:var(--red);">🗑</button>'
+                : '<button class="ana-save-btn" id="adm_mag_btn" style="flex:1;padding:10px;">＋ AGGIUNGI MAGAZZINO</button>')+
+            '</div>';
+
+          const getFields=()=>({
+            citta:(document.getElementById('adm_mag_citta')?.value||'').trim().toUpperCase(),
+            edificio:(document.getElementById('adm_mag_edificio')?.value||'').trim().toUpperCase(),
+            via:(document.getElementById('adm_mag_via')?.value||'').trim().toUpperCase(),
+            civico:(document.getElementById('adm_mag_civico')?.value||'').trim(),
+            cap:(document.getElementById('adm_mag_cap')?.value||'').trim(),
+            provincia:(document.getElementById('adm_mag_provincia')?.value||'').trim().toUpperCase(),
+          });
+
+          if(isEdit){
+            document.getElementById('adm_mag_save').addEventListener('click', async()=>{
+              const f=getFields(); if(!f.citta){ toast('Città obbligatoria'); return; }
+              const nome=f.citta+(f.edificio?'-'+f.edificio:'');
+              try{
+                const {error}=await sb.from('magazzini').update({nome,...f}).eq('id',editRow.id);
+                if(error) throw error;
+                await loadAnagraficheAdmin(); toast('Magazzino aggiornato');
+              }catch(e){ toast('⚠ '+e.message); }
+            });
+            document.getElementById('adm_mag_del').addEventListener('click', async()=>{
+              if(!confirm('Eliminare il magazzino "'+editRow.nome+'"?')) return;
+              try{
+                const {error}=await sb.from('magazzini').delete().eq('id',editRow.id);
+                if(error) throw error;
+                await loadAnagraficheAdmin(); toast('Magazzino eliminato');
+              }catch(e){ toast('⚠ '+e.message); }
+            });
+            document.getElementById('adm_mag_cancel').addEventListener('click',()=>renderForm(null));
+          } else {
+            document.getElementById('adm_mag_btn').addEventListener('click', async()=>{
+              const f=getFields(); if(!f.citta){ toast('Città obbligatoria'); return; }
+              const nome=f.citta+(f.edificio?'-'+f.edificio:'');
+              try{
+                const {error}=await sb.from('magazzini').insert({nome,...f,created_by:currentUser.id});
+                if(error) throw error;
+                await loadAnagraficheAdmin(); toast('Magazzino aggiunto');
+              }catch(e){ toast('⚠ '+e.message); }
+            });
+          }
+
+        } else {
+          // Tabelle semplici (name field)
+          const curVal = isEdit ? (editRow[t.nameField]||'') : '';
+          formWrap.innerHTML=
+            '<div style="display:flex;gap:6px;">'+
+              '<input class="ana-new-input" id="adm_new_'+t.key+'" placeholder="'+(isEdit?'MODIFICA...':'NUOVO VALORE...')+'" value="'+esc(curVal)+'">'+
+              (isEdit
+                ? '<button class="ana-save-btn" id="adm_edit_save_'+t.key+'" style="background:var(--orange);">💾</button>'+
+                  '<button class="ana-cancel-btn" id="adm_edit_cancel_'+t.key+'">✕</button>'+
+                  '<button class="ana-save-btn" id="adm_edit_del_'+t.key+'" style="background:var(--red);">🗑</button>'
+                : '<button class="ana-save-btn" id="adm_add_'+t.key+'">＋</button>')+
+            '</div>'+
+            (isEdit?'<div style="font-size:10px;color:var(--orange);font-family:Share Tech Mono,monospace;margin-top:5px;letter-spacing:.5px;">✏ modifica: '+esc(curVal)+'</div>':'');
+
+          if(isEdit){
+            document.getElementById('adm_edit_save_'+t.key).addEventListener('click', async()=>{
+              const name=(document.getElementById('adm_new_'+t.key)?.value||'').trim().toUpperCase();
+              if(!name){ document.getElementById('adm_new_'+t.key)?.focus(); return; }
+              try{
+                const obj={}; obj[t.nameField]=name;
+                const {error}=await sb.from(t.key).update(obj).eq('id',editRow.id);
+                if(error) throw error;
+                await loadAnagraficheAdmin(); toast('"'+name+'" aggiornato');
+              }catch(e){ toast(e.message.includes('unique')||e.message.includes('duplicate')?'Esiste già':'⚠ '+e.message); }
+            });
+            document.getElementById('adm_edit_del_'+t.key).addEventListener('click', async()=>{
+              if(!confirm('Eliminare "'+curVal+'"?')) return;
+              try{
+                const {error}=await sb.from(t.key).delete().eq('id',editRow.id);
+                if(error) throw error;
+                await loadAnagraficheAdmin(); toast('"'+curVal+'" eliminato');
+              }catch(e){ toast('⚠ '+e.message); }
+            });
+            document.getElementById('adm_edit_cancel_'+t.key).addEventListener('click',()=>renderForm(null));
+          } else {
+            document.getElementById('adm_add_'+t.key).addEventListener('click', async()=>{
+              const name=(document.getElementById('adm_new_'+t.key)?.value||'').trim().toUpperCase();
+              if(!name){ document.getElementById('adm_new_'+t.key)?.focus(); return; }
+              try{
+                const obj={}; obj[t.nameField]=name;
+                const {error}=await sb.from(t.key).insert(obj);
+                if(error) throw error;
+                await loadAnagraficheAdmin(); toast('"'+name+'" aggiunto');
+              }catch(e){ toast(e.message.includes('unique')||e.message.includes('duplicate')?'Esiste già':'⚠ '+e.message); }
+            });
+          }
+        }
+      }
+
+      // Renderizza form in modalità ADD di default
+      renderForm(null);
+
+      // Click su nome tag → switch to edit mode
+      tagWrap.querySelectorAll('.ana-tag-name').forEach((nameEl,idx)=>{
+        nameEl.addEventListener('click', e=>{
+          e.stopPropagation();
+          const row = rows[idx];
+          // Apri sezione se chiusa
+          if(!section.classList.contains('open')) section.classList.add('open');
+          renderForm(row);
+          formWrap.scrollIntoView({behavior:'smooth',block:'nearest'});
         });
       });
 
-      // Add form
-      if(t.key==='magazzini'){
-        body.insertAdjacentHTML('beforeend',
-          '<div class="ana-add-row" style="flex-direction:column;gap:6px;margin-top:10px;">'+
-            '<div style="font-size:10px;color:var(--dim);font-family:Share Tech Mono,monospace;letter-spacing:1px;">NUOVO MAGAZZINO</div>'+
-            '<div style="display:flex;gap:6px;">'+
-            '<input class="ana-new-input" id="adm_mag_citta" placeholder="CITTÀ" style="flex:1;">'+
-            '<input class="ana-new-input" id="adm_mag_edificio" placeholder="ID EDIFICIO (opz.)" style="flex:1;">'+
-            '</div>'+
-            '<input class="ana-new-input" id="adm_mag_via" placeholder="VIA">'+
-            '<div style="display:flex;gap:6px;">'+
-            '<input class="ana-new-input" id="adm_mag_civico" placeholder="CIVICO" style="flex:1;text-transform:none;">'+
-            '<input class="ana-new-input" id="adm_mag_cap" placeholder="CAP" style="flex:1;text-transform:none;">'+
-            '<input class="ana-new-input" id="adm_mag_provincia" placeholder="PROV" style="flex:0.7;">'+
-            '</div>'+
-            '<button class="ana-save-btn" style="width:100%;padding:10px;" id="adm_mag_btn">＋ AGGIUNGI MAGAZZINO</button>'+
-          '</div>'
-        );
-        body.querySelector('#adm_mag_btn').addEventListener('click', async()=>{
-          const citta=(document.getElementById('adm_mag_citta')?.value||'').trim().toUpperCase();
-          const edificio=(document.getElementById('adm_mag_edificio')?.value||'').trim().toUpperCase();
-          const via=(document.getElementById('adm_mag_via')?.value||'').trim().toUpperCase();
-          const civico=(document.getElementById('adm_mag_civico')?.value||'').trim();
-          const cap=(document.getElementById('adm_mag_cap')?.value||'').trim();
-          const provincia=(document.getElementById('adm_mag_provincia')?.value||'').trim().toUpperCase();
-          if(!citta){ toast('Città obbligatoria'); return; }
-          const nome=citta+'-'+edificio;
+      // ✕ tag diretto ancora funzionante
+      tagWrap.querySelectorAll('.ana-tag-del').forEach((btn,idx)=>{
+        btn.addEventListener('click', async e=>{
+          e.stopPropagation();
+          const row=rows[idx];
+          const label=t.key==='magazzini'?(row.nome||''):row[t.nameField];
+          if(!confirm('Eliminare "'+label+'"?')) return;
           try{
-            const {error}=await sb.from('magazzini').insert({nome,citta,via,civico,cap,provincia,edificio,created_by:currentUser.id});
+            const {error}=await sb.from(t.key).delete().eq('id',row.id);
             if(error) throw error;
-            await loadAnagraficheAdmin(); toast('Magazzino aggiunto');
+            await loadAnagraficheAdmin(); toast('"'+label+'" eliminato');
           }catch(e){ toast('⚠ '+e.message); }
         });
-      } else {
-        body.insertAdjacentHTML('beforeend',
-          '<div class="ana-add-row">'+
-            '<input class="ana-new-input" id="adm_new_'+t.key+'" placeholder="NUOVO VALORE...">'+
-            '<button class="ana-save-btn" data-table="'+t.key+'" data-field="'+t.nameField+'">＋</button>'+
-          '</div>'
-        );
-        body.querySelector('button.ana-save-btn[data-table]').addEventListener('click', async e=>{
-          const inp=document.getElementById('adm_new_'+e.currentTarget.dataset.table);
-          const name=(inp?.value||'').trim().toUpperCase(); if(!name){ inp?.focus(); return; }
-          try{
-            const obj={}; obj[e.currentTarget.dataset.field]=name;
-            const {error}=await sb.from(e.currentTarget.dataset.table).insert(obj);
-            if(error) throw error;
-            await loadAnagraficheAdmin(); toast('"'+name+'" aggiunto');
-          }catch(e){ toast(e.message.includes('unique')||e.message.includes('duplicate') ? 'Esiste già' : '⚠ '+e.message); }
-        });
-      }
+      });
 
       wrap.appendChild(section);
     });
