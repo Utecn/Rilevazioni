@@ -2524,109 +2524,84 @@ async function loadAnagraficheAdmin(){
               (isEdit?'✏ MODIFICA: '+esc(editRow.nome||''):'NUOVO MAGAZZINO')+
             '</div>'+
             '<div style="display:flex;gap:6px;margin-bottom:6px;">'+
-              '<input class="ana-new-input" id="adm_mag_citta" placeholder="CITTÀ *" value="'+esc(citta)+'" style="flex:1;">'+
-              '<input class="ana-new-input" id="adm_mag_edificio" placeholder="ID EDIFICIO (opz.)" value="'+esc(edificio)+'" style="flex:1;">'+
+              '<input class="ana-new-input" data-f="citta" placeholder="CITTÀ *" value="'+esc(citta)+'" style="flex:1;">'+
+              '<input class="ana-new-input" data-f="edificio" placeholder="ID EDIFICIO (opz.)" value="'+esc(edificio)+'" style="flex:1;">'+
             '</div>'+
-            '<input class="ana-new-input" id="adm_mag_via" placeholder="VIA" value="'+esc(via)+'" style="width:100%;margin-bottom:6px;">'+
+            '<input class="ana-new-input" data-f="via" placeholder="VIA" value="'+esc(via)+'" style="width:100%;margin-bottom:6px;">'+
             '<div style="display:flex;gap:6px;margin-bottom:8px;">'+
-              '<input class="ana-new-input" id="adm_mag_civico" placeholder="CIVICO" value="'+esc(civico)+'" style="flex:1;text-transform:none;">'+
-              '<input class="ana-new-input" id="adm_mag_cap" placeholder="CAP" value="'+esc(cap)+'" style="flex:1;text-transform:none;">'+
-              '<input class="ana-new-input" id="adm_mag_provincia" placeholder="PROV" value="'+esc(provincia)+'" style="flex:0.7;">'+
+              '<input class="ana-new-input" data-f="civico" placeholder="CIVICO" value="'+esc(civico)+'" style="flex:1;text-transform:none;">'+
+              '<input class="ana-new-input" data-f="cap" placeholder="CAP" value="'+esc(cap)+'" style="flex:1;text-transform:none;">'+
+              '<input class="ana-new-input" data-f="provincia" placeholder="PROV" value="'+esc(provincia)+'" style="flex:0.7;">'+
             '</div>'+
             '<div style="display:flex;gap:6px;">'+
               (isEdit
-                ? '<button class="ana-save-btn" id="adm_mag_save" style="flex:1;padding:10px;background:var(--orange);">💾 SALVA MODIFICHE</button>'+
-                  '<button class="ana-cancel-btn" id="adm_mag_cancel" style="padding:10px 14px;">✕</button>'+
-                  '<button class="ana-save-btn" id="adm_mag_del" style="padding:10px 14px;background:var(--red);">🗑</button>'
-                : '<button class="ana-save-btn" id="adm_mag_btn" style="flex:1;padding:10px;">＋ AGGIUNGI MAGAZZINO</button>')+
+                ? '<button class="ana-save-btn" data-act="save" style="flex:1;padding:10px;background:var(--orange);">💾 SALVA MODIFICHE</button>'+
+                  '<button class="ana-cancel-btn" data-act="cancel" style="padding:10px 14px;">✕</button>'+
+                  '<button class="ana-save-btn" data-act="del" style="padding:10px 14px;background:var(--red);">🗑</button>'
+                : '<button class="ana-save-btn" data-act="add" style="flex:1;padding:10px;">＋ AGGIUNGI MAGAZZINO</button>')+
             '</div>';
 
-          const getFields=()=>({
-            citta:(document.getElementById('adm_mag_citta')?.value||'').trim().toUpperCase(),
-            edificio:(document.getElementById('adm_mag_edificio')?.value||'').trim().toUpperCase(),
-            via:(document.getElementById('adm_mag_via')?.value||'').trim().toUpperCase(),
-            civico:(document.getElementById('adm_mag_civico')?.value||'').trim(),
-            cap:(document.getElementById('adm_mag_cap')?.value||'').trim(),
-            provincia:(document.getElementById('adm_mag_provincia')?.value||'').trim().toUpperCase(),
+          const getFields=()=>{
+            const get=f=>formWrap.querySelector('[data-f="'+f+'"]')?.value||'';
+            return {
+              citta:get('citta').trim().toUpperCase(),
+              edificio:get('edificio').trim().toUpperCase(),
+              via:get('via').trim().toUpperCase(),
+              civico:get('civico').trim(),
+              cap:get('cap').trim(),
+              provincia:get('provincia').trim().toUpperCase(),
+            };
+          };
+
+          formWrap.querySelectorAll('[data-act]').forEach(btn=>{
+            btn.addEventListener('click', async()=>{
+              const act=btn.dataset.act;
+              if(act==='cancel'){ renderForm(null); return; }
+              const f=getFields();
+              if(!f.citta){ toast('Città obbligatoria'); return; }
+              const nome=f.citta+(f.edificio?'-'+f.edificio:'');
+              if(act==='del'){
+                if(!confirm('Eliminare il magazzino "'+editRow.nome+'"?')) return;
+                try{ const {error}=await sb.from('magazzini').delete().eq('id',editRow.id); if(error)throw error; await loadAnagraficheAdmin(); toast('Magazzino eliminato'); }catch(e){ toast('⚠ '+e.message); }
+              } else if(act==='save'){
+                try{ const {error}=await sb.from('magazzini').update({nome,...f}).eq('id',editRow.id); if(error)throw error; await loadAnagraficheAdmin(); toast('Magazzino aggiornato'); }catch(e){ toast('⚠ '+e.message); }
+              } else { // add
+                try{ const {error}=await sb.from('magazzini').insert({nome,...f,created_by:currentUser.id}); if(error)throw error; await loadAnagraficheAdmin(); toast('Magazzino aggiunto'); }catch(e){ toast('⚠ '+e.message); }
+              }
+            });
           });
 
-          if(isEdit){
-            document.getElementById('adm_mag_save').addEventListener('click', async()=>{
-              const f=getFields(); if(!f.citta){ toast('Città obbligatoria'); return; }
-              const nome=f.citta+(f.edificio?'-'+f.edificio:'');
-              try{
-                const {error}=await sb.from('magazzini').update({nome,...f}).eq('id',editRow.id);
-                if(error) throw error;
-                await loadAnagraficheAdmin(); toast('Magazzino aggiornato');
-              }catch(e){ toast('⚠ '+e.message); }
-            });
-            document.getElementById('adm_mag_del').addEventListener('click', async()=>{
-              if(!confirm('Eliminare il magazzino "'+editRow.nome+'"?')) return;
-              try{
-                const {error}=await sb.from('magazzini').delete().eq('id',editRow.id);
-                if(error) throw error;
-                await loadAnagraficheAdmin(); toast('Magazzino eliminato');
-              }catch(e){ toast('⚠ '+e.message); }
-            });
-            document.getElementById('adm_mag_cancel').addEventListener('click',()=>renderForm(null));
-          } else {
-            document.getElementById('adm_mag_btn').addEventListener('click', async()=>{
-              const f=getFields(); if(!f.citta){ toast('Città obbligatoria'); return; }
-              const nome=f.citta+(f.edificio?'-'+f.edificio:'');
-              try{
-                const {error}=await sb.from('magazzini').insert({nome,...f,created_by:currentUser.id});
-                if(error) throw error;
-                await loadAnagraficheAdmin(); toast('Magazzino aggiunto');
-              }catch(e){ toast('⚠ '+e.message); }
-            });
-          }
-
         } else {
-          // Tabelle semplici (name field)
+          // Tabelle semplici
           const curVal = isEdit ? (editRow[t.nameField]||'') : '';
           formWrap.innerHTML=
+            (isEdit?'<div style="font-size:10px;color:var(--orange);font-family:Share Tech Mono,monospace;margin-bottom:6px;letter-spacing:.5px;">✏ modifica: '+esc(curVal)+'</div>':'')+
             '<div style="display:flex;gap:6px;">'+
-              '<input class="ana-new-input" id="adm_new_'+t.key+'" placeholder="'+(isEdit?'MODIFICA...':'NUOVO VALORE...')+'" value="'+esc(curVal)+'">'+
+              '<input class="ana-new-input" data-inp="val" placeholder="'+(isEdit?'MODIFICA...':'NUOVO VALORE...')+'" value="'+esc(curVal)+'">'+
               (isEdit
-                ? '<button class="ana-save-btn" id="adm_edit_save_'+t.key+'" style="background:var(--orange);">💾</button>'+
-                  '<button class="ana-cancel-btn" id="adm_edit_cancel_'+t.key+'">✕</button>'+
-                  '<button class="ana-save-btn" id="adm_edit_del_'+t.key+'" style="background:var(--red);">🗑</button>'
-                : '<button class="ana-save-btn" id="adm_add_'+t.key+'">＋</button>')+
-            '</div>'+
-            (isEdit?'<div style="font-size:10px;color:var(--orange);font-family:Share Tech Mono,monospace;margin-top:5px;letter-spacing:.5px;">✏ modifica: '+esc(curVal)+'</div>':'');
+                ? '<button class="ana-save-btn" data-act="save" style="background:var(--orange);">💾</button>'+
+                  '<button class="ana-cancel-btn" data-act="cancel">✕</button>'+
+                  '<button class="ana-save-btn" data-act="del" style="background:var(--red);">🗑</button>'
+                : '<button class="ana-save-btn" data-act="add">＋</button>')+
+            '</div>';
 
-          if(isEdit){
-            document.getElementById('adm_edit_save_'+t.key).addEventListener('click', async()=>{
-              const name=(document.getElementById('adm_new_'+t.key)?.value||'').trim().toUpperCase();
-              if(!name){ document.getElementById('adm_new_'+t.key)?.focus(); return; }
-              try{
-                const obj={}; obj[t.nameField]=name;
-                const {error}=await sb.from(t.key).update(obj).eq('id',editRow.id);
-                if(error) throw error;
-                await loadAnagraficheAdmin(); toast('"'+name+'" aggiornato');
-              }catch(e){ toast(e.message.includes('unique')||e.message.includes('duplicate')?'Esiste già':'⚠ '+e.message); }
+          formWrap.querySelectorAll('[data-act]').forEach(btn=>{
+            btn.addEventListener('click', async()=>{
+              const act=btn.dataset.act;
+              if(act==='cancel'){ renderForm(null); return; }
+              const name=(formWrap.querySelector('[data-inp="val"]')?.value||'').trim().toUpperCase();
+              if(act==='del'){
+                if(!confirm('Eliminare "'+curVal+'"?')) return;
+                try{ const {error}=await sb.from(t.key).delete().eq('id',editRow.id); if(error)throw error; await loadAnagraficheAdmin(); toast('"'+curVal+'" eliminato'); }catch(e){ toast('⚠ '+e.message); }
+              } else if(act==='save'){
+                if(!name){ formWrap.querySelector('[data-inp="val"]')?.focus(); return; }
+                try{ const obj={}; obj[t.nameField]=name; const {error}=await sb.from(t.key).update(obj).eq('id',editRow.id); if(error)throw error; await loadAnagraficheAdmin(); toast('"'+name+'" aggiornato'); }catch(e){ toast(e.message.includes('unique')||e.message.includes('duplicate')?'Esiste già':'⚠ '+e.message); }
+              } else { // add
+                if(!name){ formWrap.querySelector('[data-inp="val"]')?.focus(); return; }
+                try{ const obj={}; obj[t.nameField]=name; const {error}=await sb.from(t.key).insert(obj); if(error)throw error; await loadAnagraficheAdmin(); toast('"'+name+'" aggiunto'); }catch(e){ toast(e.message.includes('unique')||e.message.includes('duplicate')?'Esiste già':'⚠ '+e.message); }
+              }
             });
-            document.getElementById('adm_edit_del_'+t.key).addEventListener('click', async()=>{
-              if(!confirm('Eliminare "'+curVal+'"?')) return;
-              try{
-                const {error}=await sb.from(t.key).delete().eq('id',editRow.id);
-                if(error) throw error;
-                await loadAnagraficheAdmin(); toast('"'+curVal+'" eliminato');
-              }catch(e){ toast('⚠ '+e.message); }
-            });
-            document.getElementById('adm_edit_cancel_'+t.key).addEventListener('click',()=>renderForm(null));
-          } else {
-            document.getElementById('adm_add_'+t.key).addEventListener('click', async()=>{
-              const name=(document.getElementById('adm_new_'+t.key)?.value||'').trim().toUpperCase();
-              if(!name){ document.getElementById('adm_new_'+t.key)?.focus(); return; }
-              try{
-                const obj={}; obj[t.nameField]=name;
-                const {error}=await sb.from(t.key).insert(obj);
-                if(error) throw error;
-                await loadAnagraficheAdmin(); toast('"'+name+'" aggiunto');
-              }catch(e){ toast(e.message.includes('unique')||e.message.includes('duplicate')?'Esiste già':'⚠ '+e.message); }
-            });
-          }
+          });
         }
       }
 
