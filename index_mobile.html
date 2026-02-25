@@ -1311,7 +1311,7 @@ let selectedSpecialita = []; // array of {id, name}
 
 async function loadContractLookups(){
   const [cl,ma,mr,bt,se,sp,te,un] = await Promise.all([
-    sb.from('clienti').select('id,name').order('name'),
+    sb.from('clienti').select('id,alias,name').order('alias'),
     sb.from('magazzini').select('id,nome,citta,via,civico,cap,provincia,edificio').order('nome'),
     sb.from('marchi').select('id,name').order('name'),
     sb.from('business_types').select('id,name').order('name'),
@@ -1336,7 +1336,7 @@ function populateContractSelects(){
     el.innerHTML = (allowNone ? '<option value="">— nessuno —</option>' : '<option value="">'+empty+'</option>') +
       arr.map(x=>'<option value="'+x.id+'">'+esc(labelFn(x))+'</option>').join('');
   };
-  fill('cCliente',    contractLookups.clienti,              x=>x.name);
+  fill('cCliente',    contractLookups.clienti,              x=>(x.alias?x.alias+' – ':'')+x.name);
   fill('cMagazzino',  contractLookups.magazzini,            x=>x.nome+(x.citta?' · '+x.citta:''));
   fill('cMarchio',    contractLookups.marchi,               x=>x.name, '— nessuno —', true);
   fill('cBusiness',   contractLookups.business_types,       x=>x.name);
@@ -1351,7 +1351,9 @@ function updateContractPreview(){
   const clienteEl = document.getElementById('cCliente');
   const magazzinoEl = document.getElementById('cMagazzino');
   const marchioEl = document.getElementById('cMarchio');
-  const clienteName = clienteEl?.selectedOptions[0]?.text || '';
+  const clienteId = clienteEl?.value;
+  const clienteObj = contractLookups.clienti.find(c=>c.id===clienteId);
+  const clienteName = clienteObj ? (clienteObj.alias||clienteObj.name) : '';
   const magazzinoName = magazzinoEl?.selectedOptions[0]?.text || '';
   const marchioName = marchioEl?.value ? marchioEl.selectedOptions[0].text : '';
   const parts = [clienteName, magazzinoName, marchioName].filter(s=>s && s!=='— seleziona —' && s!=='— nessuno —');
@@ -2460,7 +2462,7 @@ async function adminCreateProject(){
 
 /* ── ANAGRAFICHE ADMIN ── */
 const ANA_TABLES = [
-  { key:'clienti',              label:'CLIENTI',                   nameField:'name' },
+  { key:'clienti',              label:'CLIENTI',                   nameField:'name', hasAlias:true },
   { key:'magazzini',            label:'MAGAZZINI',                 nameField:'nome', extra:true },
   { key:'marchi',               label:'MARCHI',                    nameField:'name' },
   { key:'business_types',       label:'BUSINESS',                  nameField:'name' },
@@ -2474,7 +2476,7 @@ async function loadAnagraficheAdmin(){
   const wrap = document.getElementById('anagraficheList'); wrap.innerHTML='';
   showLoading('CARICAMENTO...');
   try{
-    const results = await Promise.all(ANA_TABLES.map(t=>sb.from(t.key).select('*').order(t.nameField)));
+    const results = await Promise.all(ANA_TABLES.map(t=>sb.from(t.key).select('*').order(t.hasAlias?'alias':t.nameField)));
     ANA_TABLES.forEach((t,i)=>{
       const rows = results[i].data||[];
       const section = document.createElement('div'); section.className='ana-section';
@@ -2491,9 +2493,10 @@ async function loadAnagraficheAdmin(){
       const tagWrap = document.createElement('div'); tagWrap.style.cssText='display:flex;flex-wrap:wrap;margin-bottom:4px;';
       rows.forEach(r=>{
         const tag = document.createElement('span'); tag.className='ana-tag'; tag.style.cursor='pointer';
-        const displayName = t.key==='magazzini'
-          ? (r.nome+(r.citta?' · '+r.citta:''))
-          : r[t.nameField];
+        let displayName;
+        if(t.key==='magazzini') displayName = (r.nome+(r.citta?' · '+r.citta:''));
+        else if(t.hasAlias) displayName = (r.alias||r.name)+(r.alias&&r.name?' – '+r.name:'');
+        else displayName = r[t.nameField];
         tag.dataset.id = r.id;
         tag.innerHTML=
           '<span class="ana-tag-name" style="text-decoration:underline;text-decoration-style:dotted;">'+esc(displayName)+'</span>'+
@@ -2572,33 +2575,48 @@ async function loadAnagraficheAdmin(){
           });
 
         } else {
-          // Tabelle semplici
+          // Tabelle semplici (con eventuale alias)
           const curVal = isEdit ? (editRow[t.nameField]||'') : '';
+          const curAlias = isEdit ? (editRow.alias||'') : '';
           formWrap.innerHTML=
-            (isEdit?'<div style="font-size:10px;color:var(--orange);font-family:Share Tech Mono,monospace;margin-bottom:6px;letter-spacing:.5px;">✏ modifica: '+esc(curVal)+'</div>':'')+
+            (isEdit?'<div style="font-size:10px;color:var(--orange);font-family:Share Tech Mono,monospace;margin-bottom:6px;letter-spacing:.5px;">✏ modifica: '+esc(curAlias||curVal)+'</div>':'')+
+            (t.hasAlias
+              ? '<div style="display:flex;gap:6px;margin-bottom:6px;">'+
+                  '<input class="ana-new-input" data-inp="alias" placeholder="ALIAS (es. 3M)" value="'+esc(curAlias)+'" style="flex:1;text-transform:uppercase;">'+
+                  '<input class="ana-new-input" data-inp="val" placeholder="RAGIONE SOCIALE" value="'+esc(curVal)+'" style="flex:2;text-transform:none;">'+
+                '</div>'
+              : '<div style="display:flex;gap:6px;margin-bottom:6px;">'+
+                  '<input class="ana-new-input" data-inp="val" placeholder="'+(isEdit?'MODIFICA...':'NUOVO VALORE...')+'" value="'+esc(curVal)+'">'+
+                '</div>')+
             '<div style="display:flex;gap:6px;">'+
-              '<input class="ana-new-input" data-inp="val" placeholder="'+(isEdit?'MODIFICA...':'NUOVO VALORE...')+'" value="'+esc(curVal)+'">'+
               (isEdit
-                ? '<button class="ana-save-btn" data-act="save" style="background:var(--orange);">💾</button>'+
+                ? '<button class="ana-save-btn" data-act="save" style="background:var(--orange);flex:1;">💾 SALVA</button>'+
                   '<button class="ana-cancel-btn" data-act="cancel">✕</button>'+
                   '<button class="ana-save-btn" data-act="del" style="background:var(--red);">🗑</button>'
-                : '<button class="ana-save-btn" data-act="add">＋</button>')+
+                : '<button class="ana-save-btn" data-act="add" style="flex:1;">＋</button>')+
             '</div>';
 
           formWrap.querySelectorAll('[data-act]').forEach(btn=>{
             btn.addEventListener('click', async()=>{
               const act=btn.dataset.act;
               if(act==='cancel'){ renderForm(null); return; }
-              const name=(formWrap.querySelector('[data-inp="val"]')?.value||'').trim().toUpperCase();
+              const name=(formWrap.querySelector('[data-inp="val"]')?.value||'').trim();
+              const alias=t.hasAlias ? (formWrap.querySelector('[data-inp="alias"]')?.value||'').trim().toUpperCase() : null;
               if(act==='del'){
-                if(!confirm('Eliminare "'+curVal+'"?')) return;
-                try{ const {error}=await sb.from(t.key).delete().eq('id',editRow.id); if(error)throw error; await loadAnagraficheAdmin(); toast('"'+curVal+'" eliminato'); }catch(e){ toast('⚠ '+e.message); }
+                if(!confirm('Eliminare "'+( alias||curVal||curAlias)+'\"?')) return;
+                try{ const {error}=await sb.from(t.key).delete().eq('id',editRow.id); if(error)throw error; await loadAnagraficheAdmin(); toast('Eliminato'); }catch(e){ toast('⚠ '+e.message); }
               } else if(act==='save'){
                 if(!name){ formWrap.querySelector('[data-inp="val"]')?.focus(); return; }
-                try{ const obj={}; obj[t.nameField]=name; const {error}=await sb.from(t.key).update(obj).eq('id',editRow.id); if(error)throw error; await loadAnagraficheAdmin(); toast('"'+name+'" aggiornato'); }catch(e){ toast(e.message.includes('unique')||e.message.includes('duplicate')?'Esiste già':'⚠ '+e.message); }
+                try{
+                  const obj={}; obj[t.nameField]=name; if(t.hasAlias) obj.alias=alias;
+                  const {error}=await sb.from(t.key).update(obj).eq('id',editRow.id); if(error)throw error; await loadAnagraficheAdmin(); toast('Aggiornato');
+                }catch(e){ toast(e.message.includes('unique')||e.message.includes('duplicate')?'Esiste già':'⚠ '+e.message); }
               } else { // add
                 if(!name){ formWrap.querySelector('[data-inp="val"]')?.focus(); return; }
-                try{ const obj={}; obj[t.nameField]=name; const {error}=await sb.from(t.key).insert(obj); if(error)throw error; await loadAnagraficheAdmin(); toast('"'+name+'" aggiunto'); }catch(e){ toast(e.message.includes('unique')||e.message.includes('duplicate')?'Esiste già':'⚠ '+e.message); }
+                try{
+                  const obj={}; obj[t.nameField]=name; if(t.hasAlias) obj.alias=alias;
+                  const {error}=await sb.from(t.key).insert(obj); if(error)throw error; await loadAnagraficheAdmin(); toast('"'+(alias||name)+'" aggiunto');
+                }catch(e){ toast(e.message.includes('unique')||e.message.includes('duplicate')?'Esiste già':'⚠ '+e.message); }
               }
             });
           });
