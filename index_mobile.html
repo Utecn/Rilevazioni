@@ -524,8 +524,9 @@ body.sort-mode .sort-handle{display:block;}
     <div class="hist-proj" id="histProjLabel"></div>
   </div>
   <div class="hist-toolbar">
-    <select class="filter-select" id="filterSelect" onchange="renderHistory()"><option value="">Tutti i tasti</option></select>
-    <button class="exp-btn" onclick="openExport()">⬇ EXCEL</button>
+    <select class="filter-select" id="filterSelect" onchange="renderHistory()" style="flex:1;min-width:0;"></select>
+    <button class="hbtn" id="btnAllUsers" onclick="toggleAllUsers()" title="Solo mie / Tutte" style="border-color:var(--orange);color:var(--orange);white-space:nowrap;flex-shrink:0;">👤 IO</button>
+    <button class="exp-btn" onclick="openExport()">⬇</button>
     <button class="clear-btn" id="clearBtn" style="display:none" onclick="confirmClear()">🗑</button>
   </div>
   <div class="hist-summary">
@@ -2111,9 +2112,30 @@ async function deleteProjConfirm(id,name){
 }
 
 /* ── STORICO ── */
+let showAllUsers = false;
+
+function toggleAllUsers(){
+  showAllUsers = !showAllUsers;
+  const btn = document.getElementById('btnAllUsers');
+  if(showAllUsers){
+    btn.textContent = '👥 TUTTI';
+    btn.style.borderColor = 'var(--purple)';
+    btn.style.color = 'var(--purple)';
+  } else {
+    btn.textContent = '👤 IO';
+    btn.style.borderColor = 'var(--orange)';
+    btn.style.color = 'var(--orange)';
+  }
+  renderHistory();
+}
+
 async function openHistory(){
   document.getElementById('histProjLabel').textContent=currentProject?.name||'';
   document.getElementById('clearBtn').style.display=(currentUser?.role==='admin'||currentUser?.role==='project_manager')?'':'none';
+  // Reset a "solo mie" ogni volta che si apre
+  showAllUsers = false;
+  const btn = document.getElementById('btnAllUsers');
+  btn.textContent='👤 IO'; btn.style.borderColor='var(--orange)'; btn.style.color='var(--orange)';
   await loadLog();
   const sel=document.getElementById('filterSelect');
   sel.innerHTML='<option value="">Tutti i tasti</option>';
@@ -2122,7 +2144,12 @@ async function openHistory(){
   document.getElementById('histScreen').classList.add('show');
 }
 function closeHistory(){ document.getElementById('histScreen').classList.remove('show'); }
-function getFilteredLog(){ const f=document.getElementById('filterSelect').value; return f?logEntries.filter(r=>r.card_name===f):[...logEntries]; }
+function getFilteredLog(){
+  const f=document.getElementById('filterSelect').value;
+  let entries = showAllUsers ? [...logEntries] : logEntries.filter(r=>r.user_id===currentUser.id);
+  if(f) entries = entries.filter(r=>r.card_name===f);
+  return entries;
+}
 function attachSwipeDelete(wrap, row, delBg, entry){
   const entryId = typeof entry === 'object' ? entry.id : entry;
   const DEL_W = 110;
