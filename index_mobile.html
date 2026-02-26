@@ -431,6 +431,7 @@ body.sort-mode .sort-handle{display:block;}
 <div class="header">
   <!-- ⌂ TASTO HOME — torna alla selezione progetto -->
   <button class="hbtn home" onclick="goHome()" title="Home">⌂</button>
+  <button class="hbtn" id="btnFs" onclick="toggleFullscreen()" title="Schermo intero" style="font-size:15px;padding:5px 9px;">⛶</button>
   <div class="proj-selector" onclick="openProjSheet()">
     <span class="proj-selector-icon">◈</span>
     <div style="flex:1;min-width:0;overflow:hidden;">
@@ -1569,7 +1570,32 @@ async function deleteContractConfirm(id,name){
   }catch(e){toast('Errore: '+e.message);}
 }
 
-/* ── REALTIME SYNC ── */
+/* ── FULLSCREEN ── */
+function toggleFullscreen(){
+  const btn = document.getElementById('btnFs');
+  const isFs = document.fullscreenElement || document.webkitFullscreenElement;
+  if(!isFs){
+    const el = document.documentElement;
+    if(el.requestFullscreen) el.requestFullscreen();
+    else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  } else {
+    if(document.exitFullscreen) document.exitFullscreen();
+    else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }
+}
+document.addEventListener('fullscreenchange', updateFsBtn);
+document.addEventListener('webkitfullscreenchange', updateFsBtn);
+function updateFsBtn(){
+  const isFs = document.fullscreenElement || document.webkitFullscreenElement;
+  const btn = document.getElementById('btnFs');
+  if(!btn) return;
+  btn.textContent = isFs ? '✕⛶' : '⛶';
+  btn.title = isFs ? 'Esci da schermo intero' : 'Schermo intero';
+  btn.style.color = isFs ? 'var(--orange)' : '';
+  btn.style.borderColor = isFs ? 'var(--orange)' : '';
+}
+
+
 let realtimeChannel = null;
 
 function startRealtimeSync(){
