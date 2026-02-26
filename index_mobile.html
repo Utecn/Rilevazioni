@@ -783,7 +783,7 @@ body.sort-mode .sort-handle{display:block;}
     <input class="qty-input" id="qtyInput" type="number" min="1" max="9999" value="1">
     <button class="qty-btn" id="qtyPlus">＋</button>
   </div>
-  <button class="confirm-btn" onclick="confirmQty()">CONFERMA</button>
+  <button class="confirm-btn" id="qtyConfirmBtn">CONFERMA</button>
   <button class="sheet-cancel" onclick="closeSheet('qtyOverlay')">Annulla</button>
 </div></div>
 
@@ -1698,97 +1698,123 @@ function updateFooter(){
 }
 
 /* ── QUANTITÀ ── */
-let qtyCardId=null;
+let qtyCardId = null;
 function openQty(id){
-  const c=cards.find(x=>x.id===id); if(!c)return;
-  qtyCardId=id;
-  document.getElementById('qtyCardName').textContent=c.name;
-  document.getElementById('qtyInput').value=c.qty||1;
+  const c = cards.find(x=>x.id===id); if(!c) return;
+  qtyCardId = id;
+  qtyEditEntryId = null; // assicura modalità "card"
+  document.getElementById('qtyCardName').textContent = c.name;
+  document.getElementById('qtyInput').value = c.qty||1;
   showSheet('qtyOverlay');
-  setTimeout(()=>{ const inp=document.getElementById('qtyInput'); inp.focus(); inp.select(); },150);
+  setTimeout(()=>{ const inp=document.getElementById('qtyInput'); inp?.focus(); inp?.select(); },150);
 }
 function changeQty(delta){
   const inp=document.getElementById('qtyInput');
   inp.value=Math.max(1,Math.min(9999,(parseInt(inp.value)||1)+delta));
 }
-function confirmQty(){
-  if(!qtyCardId)return;
-  const v=Math.max(1,Math.min(9999,parseInt(document.getElementById('qtyInput').value)||1));
-  const c=cards.find(x=>x.id===qtyCardId); if(!c)return;
-  c.qty=v;
-  const el=document.getElementById('q_'+qtyCardId);
-  if(el)el.textContent='×'+v;
-  closeSheet('qtyOverlay');
-  document.getElementById('qtyInput')?.blur();
-  toast('Quantità: ×'+v);
-  qtyCardId=null;
+
+/* ── QUANTITÀ OVERLAY ── */
+let savedQty = 1;
+let qtyEditEntryId = null;
+
+// Dispatcher unico: decide se stiamo registrando un nuovo timer o modificando storico
+function dispatchQtyConfirm(){
+  if(qtyEditEntryId) confirmQtyEdit();
+  else confirmQty();
 }
 
-/* Modifica quantità da storico (long-press su riga) */
-let qtyEditEntryId=null, qtyEditRow=null;
-function openQtyEdit(entryId, row){
-  qtyEditEntryId=entryId; qtyEditRow=row;
-  // Leggi quantità corrente dalla riga se presente
-  const qtyBadge=row.querySelector('.rec-qty');
-  const current=qtyBadge ? parseInt(qtyBadge.textContent.replace('×',''))||1 : 1;
-  // Riusa overlay quantità ma adatta titolo
-  const cardNameEl=document.getElementById('qtyCardName');
-  const nameEl=row.querySelector('.rec-name');
-  cardNameEl.textContent=(nameEl?.textContent||'rilevazione');
-  document.getElementById('qtyInput').value=current;
-  // Sostituisce temporaneamente il comportamento di conferma
-  const btn=document.querySelector('#qtyOverlay .confirm-btn');
-  btn.onclick=confirmQtyEdit;
-  showSheet('qtyOverlay');
-  setTimeout(()=>{ const inp=document.getElementById('qtyInput'); inp.focus(); inp.select(); },150);
+function confirmQty(){
+  if(qtyCardId){
+    const v=Math.max(1,Math.min(9999,parseInt(document.getElementById('qtyInput').value)||1));
+    const c=cards.find(x=>x.id===qtyCardId); if(c){ c.qty=v; const el=document.getElementById('q_'+qtyCardId); if(el)el.textContent='×'+v; }
+    savedQty=v;
+    toast('Quantità: ×'+v);
+    qtyCardId=null;
+  }
+  closeSheet('qtyOverlay');
 }
 
 async function confirmQtyEdit(){
-  if(!qtyEditEntryId)return;
-  const v=Math.max(1,Math.min(9999,parseInt(document.getElementById("qtyInput").value)||1));
-  closeSheet("qtyOverlay");
-  document.getElementById("qtyInput")?.blur();
+  if(!qtyEditEntryId) return;
+  const entryId = qtyEditEntryId; // cattura prima di qualsiasi reset
+  const v = Math.max(1, Math.min(9999, parseInt(document.getElementById('qtyInput').value)||1));
+  qtyEditEntryId = null; // reset subito per evitare doppi click
+  closeSheet('qtyOverlay');
   try{
-    const {error}=await sb.from("log_entries").update({quantity:v}).eq("id",qtyEditEntryId);
-    if(error){
-      if(error.message&&error.message.includes("quantity")){
-        toast("⚠ Colonna quantity mancante. Esegui ALTER TABLE log_entries ADD COLUMN quantity integer NOT NULL DEFAULT 1");
-      } else { throw error; }
-    } else {
-      const entry=logEntries.find(e=>e.id===qtyEditEntryId);
-      if(entry) entry.quantity=v;
-      renderHistory();
-      toast("✓ Quantità salvata: ×"+v);
-    }
-  }catch(e){ toast("⚠ "+e.message); }
-  finally{
-    document.querySelector("#qtyOverlay .confirm-btn").onclick=confirmQty;
-    qtyEditEntryId=null; qtyEditRow=null;
+    const {data, error} = await sb.from('log_entries')
+      .update({quantity: v})
+      .eq('id', entryId)
+      .select('id, quantity')
+      .single();
+    if(error) throw error;
+    // Aggiorna dato locale
+    const entry = logEntries.find(e => e.id === entryId);
+    if(entry) entry.quantity = v;
+    renderHistory();
+    toast('✓ Quantità salvata: ×' + v);
+  } catch(e) {
+    toast('⚠ ' + e.message);
   }
 }
-// Attacca pulsanti +/− overlay (dopo DOM ready)
+
+function openQtyCard(cardId){
+  const c = cards.find(x => x.id === cardId);
+  if(!c || !c.running) return;
+  qtyEditEntryId = null;
+  document.getElementById('qtyCardName').textContent = c.name;
+  document.getElementById('qtyInput').value = savedQty;
+  showSheet('qtyOverlay');
+  setTimeout(()=>{ const inp=document.getElementById('qtyInput'); inp?.focus(); inp?.select(); }, 150);
+}
+
+function openQtyEdit(entryId, row){
+  qtyEditEntryId = entryId;
+  const qtyBadge = row.querySelector('.rec-qty');
+  const current = qtyBadge ? parseInt(qtyBadge.textContent.replace('×',''))||1 : 1;
+  const nameEl = row.querySelector('.rec-name');
+  document.getElementById('qtyCardName').textContent = nameEl?.textContent || 'rilevazione';
+  document.getElementById('qtyInput').value = current;
+  showSheet('qtyOverlay');
+  setTimeout(()=>{ const inp=document.getElementById('qtyInput'); inp?.focus(); inp?.select(); }, 150);
+}
+
+// Attacca pulsanti overlay
 document.addEventListener('DOMContentLoaded',()=>{
-  document.getElementById('qtyMinus')?.addEventListener('click',()=>changeQty(-1));
-  document.getElementById('qtyPlus')?.addEventListener('click',()=>changeQty(1));
-  // Prevent focus loss on input (keeps keyboard open on mobile)
-  document.getElementById('qtyMinus')?.addEventListener('mousedown',e=>e.preventDefault());
-  document.getElementById('qtyMinus')?.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
-  document.getElementById('qtyMinus')?.addEventListener('touchend',e=>{ e.preventDefault(); changeQty(-1); document.getElementById('qtyInput')?.focus(); });
-  document.getElementById('qtyPlus')?.addEventListener('mousedown',e=>e.preventDefault());
-  document.getElementById('qtyPlus')?.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
-  document.getElementById('qtyPlus')?.addEventListener('touchend',e=>{ e.preventDefault(); changeQty(1); document.getElementById('qtyInput')?.focus(); });
-  document.getElementById('qtyInput')?.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const btn=document.querySelector('#qtyOverlay .confirm-btn'); if(btn) btn.click(); } });
-  document.querySelector('#qtyOverlay .confirm-btn')?.addEventListener('mousedown',e=>e.preventDefault());
-  document.querySelector('#qtyOverlay .confirm-btn')?.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
-  document.querySelector('#qtyOverlay .confirm-btn')?.addEventListener('touchend',e=>{ e.preventDefault(); document.querySelector('#qtyOverlay .confirm-btn').click(); });
-  // Ripristina comportamento normale se overlay viene chiuso
+  const confirmBtn = document.getElementById('qtyConfirmBtn');
+  const minusBtn   = document.getElementById('qtyMinus');
+  const plusBtn    = document.getElementById('qtyPlus');
+  const qtyInp     = document.getElementById('qtyInput');
+
+  // Confirm
+  confirmBtn?.addEventListener('click', dispatchQtyConfirm);
+  confirmBtn?.addEventListener('mousedown', e=>e.preventDefault());
+  confirmBtn?.addEventListener('touchstart', e=>e.preventDefault(), {passive:false});
+  confirmBtn?.addEventListener('touchend', e=>{ e.preventDefault(); dispatchQtyConfirm(); });
+
+  // Minus
+  minusBtn?.addEventListener('click', ()=>changeQty(-1));
+  minusBtn?.addEventListener('mousedown', e=>e.preventDefault());
+  minusBtn?.addEventListener('touchstart', e=>e.preventDefault(), {passive:false});
+  minusBtn?.addEventListener('touchend', e=>{ e.preventDefault(); changeQty(-1); qtyInp?.focus(); });
+
+  // Plus
+  plusBtn?.addEventListener('click', ()=>changeQty(1));
+  plusBtn?.addEventListener('mousedown', e=>e.preventDefault());
+  plusBtn?.addEventListener('touchstart', e=>e.preventDefault(), {passive:false});
+  plusBtn?.addEventListener('touchend', e=>{ e.preventDefault(); changeQty(1); qtyInp?.focus(); });
+
+  // Enter su input
+  qtyInp?.addEventListener('keydown', e=>{ if(e.key==='Enter') dispatchQtyConfirm(); });
+
+  // Chiusura overlay (tap fuori o Annulla) → reset
   document.getElementById('qtyOverlay')?.addEventListener('click', e=>{
-    if(e.target.id==='qtyOverlay'){ document.querySelector('#qtyOverlay .confirm-btn').onclick=confirmQty; qtyEditEntryId=null; qtyEditRow=null; }
+    if(e.target.id==='qtyOverlay') qtyEditEntryId = null;
   });
-  document.querySelector('#qtyOverlay .sheet-cancel')?.addEventListener('click',()=>{
-    document.querySelector('#qtyOverlay .confirm-btn').onclick=confirmQty; qtyEditEntryId=null; qtyEditRow=null;
+  document.querySelector('#qtyOverlay .sheet-cancel')?.addEventListener('click', ()=>{
+    qtyEditEntryId = null;
   });
 });
+
 
 /* ── MEMBERS SCREEN ── */
 async function openMembersScreen(proj){
