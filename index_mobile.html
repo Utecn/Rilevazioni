@@ -955,44 +955,71 @@ function renderContracts(contracts){
 
 async function selectContract(contract){
   currentContract = contract;
+  _showAllProjects = false; // reset toggle ad ogni apertura contratto
   setSplashPhase('projects');
+  await loadProjectsForContract();
+}
+
+async function loadProjectsForContract(){
+  if(!currentContract) return;
   showLoading('CARICAMENTO...');
   try {
-    const { data:projects, error } = await sb.from('projects')
-      .select('id,name,created_at,responsible_id,reparto_id').eq('contract_id',contract.id).order('created_at',{ascending:false});
+    const isAdmin = currentUser.role==='admin';
+
+    // Fetch TUTTI i progetti del contratto
+    const { data:allProjects, error } = await sb.from('projects')
+      .select('id,name,created_at,responsible_id,reparto_id')
+      .eq('contract_id',currentContract.id)
+      .order('created_at',{ascending:false});
     if(error) throw error;
-    const counts = await Promise.all(projects.map(p =>
-      sb.from('log_entries').select('id',{count:'exact',head:true}).eq('project_id',p.id)
-    ));
-    // Fetch responsible names
-    const respIds=[...new Set((projects||[]).map(p=>p.responsible_id).filter(Boolean))];
-    let respMap={};
-    if(respIds.length){
-      const {data:resps}=await sb.from('profiles').select('id,name').in('id',respIds);
-      (resps||[]).forEach(r=>respMap[r.id]=r.name);
-    }
-    // Fetch reparti names
-    const repartoIds=[...new Set((projects||[]).map(p=>p.reparto_id).filter(Boolean))];
-    let repartoMap={};
-    if(repartoIds.length){
-      const {data:reps}=await sb.from('reparti').select('id,name').in('id',repartoIds);
-      (reps||[]).forEach(r=>repartoMap[r.id]=r.name);
-    }
-    // Fetch user memberships for this contract's projects
-    const projIds = (projects||[]).map(p=>p.id);
+
+    const projIds = (allProjects||[]).map(p=>p.id);
+
+    // Fetch memberships utente corrente
     let memberProjIds=[];
     if(projIds.length){
       const {data:mems}=await sb.from('project_members').select('project_id')
         .eq('user_id',currentUser.id).in('project_id',projIds);
       memberProjIds = (mems||[]).map(m=>m.project_id);
     }
-    const enriched = projects.map((p,i)=>({
+
+    // "Miei" = responsabile O membro
+    const myProjIds = new Set(
+      (allProjects||[]).filter(p => p.responsible_id===currentUser.id || memberProjIds.includes(p.id)).map(p=>p.id)
+    );
+
+    // Scegli quali mostrare in base al toggle
+    const toShow = (_showAllProjects || isAdmin)
+      ? allProjects
+      : (allProjects||[]).filter(p => myProjIds.has(p.id));
+
+    // Arricchisci i progetti da mostrare
+    const counts = await Promise.all((toShow||[]).map(p =>
+      sb.from('log_entries').select('id',{count:'exact',head:true}).eq('project_id',p.id)
+    ));
+    const respIds=[...new Set((toShow||[]).map(p=>p.responsible_id).filter(Boolean))];
+    let respMap={};
+    if(respIds.length){
+      const {data:resps}=await sb.from('profiles').select('id,name').in('id',respIds);
+      (resps||[]).forEach(r=>respMap[r.id]=r.name);
+    }
+    const repartoIds=[...new Set((toShow||[]).map(p=>p.reparto_id).filter(Boolean))];
+    let repartoMap={};
+    if(repartoIds.length){
+      const {data:reps}=await sb.from('reparti').select('id,name').in('id',repartoIds);
+      (reps||[]).forEach(r=>repartoMap[r.id]=r.name);
+    }
+    const enriched = (toShow||[]).map((p,i)=>({
       ...p,
       log_count: counts[i].count||0,
       responsible_name: respMap[p.responsible_id]||'—',
       reparto_name: repartoMap[p.reparto_id]||null,
-      isMember: memberProjIds.includes(p.id)
+      isMember: memberProjIds.includes(p.id),
+      isMine: myProjIds.has(p.id)
     }));
+    // Passa anche il totale di tutti i progetti per mostrare il toggle solo se ha senso
+    _allProjectsCount = allProjects.length;
+    _myProjectsCount = myProjIds.size;
     renderProjects(enriched);
     document.getElementById('splash').classList.remove('hidden');
   } catch(e){ toast('Errore: '+e.message); }
@@ -1005,55 +1032,53 @@ function goBackToContracts(){
 }
 
 let _showAllProjects = false;
-let _cachedProjects = [];
+let _allProjectsCount = 0;
+let _myProjectsCount = 0;
 
 function renderProjects(projects){
-  // Prima chiamata: inizializza stato toggle
-  if(projects !== null) _cachedProjects = projects;
-  const isAdminOrPM = currentUser.role==='admin' || currentUser.role==='project_manager';
-
+  const isAdmin = currentUser.role==='admin';
   const list = document.getElementById('splashList');
   list.innerHTML = '';
 
-  // ── Toggle ──
-  const toggleWrap = document.createElement('div'); toggleWrap.className='proj-toggle-wrap';
-  toggleWrap.innerHTML=
-    '<span class="proj-toggle-label">Tutti i progetti</span>'+
-    '<label class="proj-toggle">'+
-      '<input type="checkbox" id="projToggle"'+(_showAllProjects?' checked':'')+'>'+
-      '<span class="proj-toggle-slider"></span>'+
-    '</label>';
-  list.appendChild(toggleWrap);
-  document.getElementById('projToggle').addEventListener('change', function(){
-    _showAllProjects = this.checked;
-    renderProjects(null);
-  });
+  // ── Toggle (visibile solo se ci sono più progetti di quelli assegnati) ──
+  const hasOthers = _allProjectsCount > _myProjectsCount;
+  if(hasOthers || isAdmin){
+    const toggleWrap = document.createElement('div'); toggleWrap.className='proj-toggle-wrap';
+    toggleWrap.innerHTML=
+      '<span class="proj-toggle-label">Tutti i progetti</span>'+
+      '<label class="proj-toggle">'+
+        '<input type="checkbox" id="projToggle"'+(_showAllProjects?' checked':'')+'>'+
+        '<span class="proj-toggle-slider"></span>'+
+      '</label>';
+    list.appendChild(toggleWrap);
+    document.getElementById('projToggle').addEventListener('change', async function(){
+      _showAllProjects = this.checked;
+      await loadProjectsForContract();
+    });
+  }
 
-  // ── Filtra ──
-  const all = _cachedProjects;
-  const mine = all.filter(p => p.responsible_id===currentUser.id || p.isMember);
-  const visible = _showAllProjects ? all : mine;
-
-  if(!visible.length){
+  if(!projects||!projects.length){
     const empty=document.createElement('div'); empty.className='proj-empty';
-    empty.textContent = 'Nessun progetto disponibile.';
+    empty.textContent = _showAllProjects ? 'Nessun progetto in questo appalto.' : 'Nessun progetto assegnato. Attiva "Tutti i progetti" per vedere gli altri.';
     list.appendChild(empty); return;
   }
 
-  // ── Sezioni ──
-  if(_showAllProjects && mine.length && all.length > mine.length){
-    const myIds = new Set(mine.map(p=>p.id));
-    const others = all.filter(p=>!myIds.has(p.id));
-    const lbl1=document.createElement('div'); lbl1.className='proj-section-label'; lbl1.textContent='I MIEI PROGETTI';
-    list.appendChild(lbl1);
-    mine.forEach(p=>list.appendChild(buildProjRow(p)));
+  // ── Sezioni: se toggle ON separa miei/altri ──
+  if(_showAllProjects && !isAdmin){
+    const mine = projects.filter(p=>p.isMine);
+    const others = projects.filter(p=>!p.isMine);
+    if(mine.length){
+      const lbl1=document.createElement('div'); lbl1.className='proj-section-label'; lbl1.textContent='I MIEI PROGETTI';
+      list.appendChild(lbl1);
+      mine.forEach(p=>list.appendChild(buildProjRow(p)));
+    }
     if(others.length){
       const lbl2=document.createElement('div'); lbl2.className='proj-section-label'; lbl2.textContent='ALTRI PROGETTI';
       list.appendChild(lbl2);
       others.forEach(p=>list.appendChild(buildProjRow(p)));
     }
   } else {
-    visible.forEach(p=>list.appendChild(buildProjRow(p)));
+    projects.forEach(p=>list.appendChild(buildProjRow(p)));
   }
 }
 
