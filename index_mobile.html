@@ -1040,9 +1040,8 @@ function renderProjects(projects){
   const list = document.getElementById('splashList');
   list.innerHTML = '';
 
-  // ── Toggle (visibile solo se ci sono più progetti di quelli assegnati) ──
-  const hasOthers = _allProjectsCount > _myProjectsCount;
-  if(hasOthers || isAdmin){
+  // ── Toggle sempre visibile ──
+  {
     const toggleWrap = document.createElement('div'); toggleWrap.className='proj-toggle-wrap';
     toggleWrap.innerHTML=
       '<span class="proj-toggle-label">Tutti i progetti</span>'+
