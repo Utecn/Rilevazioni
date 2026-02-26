@@ -870,6 +870,7 @@ document.getElementById('loginPassword').addEventListener('keydown',e=>{ if(e.ke
 
 async function doLogout(){
   await sb.auth.signOut();
+  stopRealtimeSync();
   currentUser=null; currentProject=null; currentContract=null; currentProcess=null; cards=[]; logEntries=[];
   stopAllTimers(); closeAllSheets();
   document.getElementById('adminScreen').classList.remove('show');
@@ -1364,7 +1365,7 @@ async function selectProcess(proc, label){
     await loadLog();
   }
   catch(e){ toast('Errore: '+e.message); }
-  finally{ hideLoading(); setTimeout(()=>renderAll(),80); }
+  finally{ hideLoading(); setTimeout(()=>{ renderAll(); startRealtimeSync(); },80); }
 }
 
 /* ── ANAGRAFICHE LOOKUP ── */
@@ -1568,7 +1569,76 @@ async function deleteContractConfirm(id,name){
   }catch(e){toast('Errore: '+e.message);}
 }
 
-/* ── CARDS ── */
+/* ── REALTIME SYNC ── */
+let realtimeChannel = null;
+
+function startRealtimeSync(){
+  stopRealtimeSync(); // pulizia eventuale canale precedente
+  if(!currentProject) return;
+
+  realtimeChannel = sb.channel('cards-sync-'+currentProject.id)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'cards',
+      filter: 'project_id=eq.'+currentProject.id
+    }, async (payload)=>{
+      // Ignora se non siamo nella schermata principale
+      if(!currentProject || document.getElementById('splash').classList.contains('hidden')===false) return;
+
+      const evt = payload.eventType;
+      const rec = payload.new || payload.old;
+
+      if(evt==='INSERT'){
+        // Nuovo tasto aggiunto da altro utente
+        if(!cards.find(c=>c.id===rec.id)){
+          cards.push({...rec, running:false, start:null, elapsed:0});
+          cards.sort((a,b)=>a.position-b.position);
+          renderAll();
+          toast('↻ '+rec.name+' aggiunto da altro utente');
+        }
+      } else if(evt==='UPDATE'){
+        const c = cards.find(x=>x.id===rec.id);
+        if(c){
+          const wasRunning = c.running;
+          const wasStart = c.start;
+          const wasElapsed = c.elapsed;
+          // Aggiorna solo i campi non-runtime
+          c.name = rec.name;
+          c.position = rec.position;
+          c.records = rec.records;
+          // Riordina se necessario
+          cards.sort((a,b)=>a.position-b.position);
+          // Aggiorna solo l'elemento DOM senza interrompere il timer
+          const el = document.querySelector('.card[data-id="'+rec.id+'"]');
+          if(el){
+            el.querySelector('.card-name').textContent = rec.name;
+            el.querySelector('.badge').textContent = '#'+rec.records;
+          } else {
+            renderAll(); // rebuild completo se DOM non in sync
+          }
+        }
+      } else if(evt==='DELETE'){
+        const idx = cards.findIndex(c=>c.id===rec.id);
+        if(idx>=0){
+          cards[idx].running=false;
+          cards.splice(idx,1);
+          renderAll();
+          toast('↻ Tasto eliminato da altro utente');
+        }
+      }
+    })
+    .subscribe();
+}
+
+function stopRealtimeSync(){
+  if(realtimeChannel){
+    sb.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+}
+
+
 async function loadCards(){
   const { data, error } = await sb.from('cards')
     .select('*').eq('project_id',currentProject.id).order('position');
@@ -1955,6 +2025,7 @@ async function loadMembers(projectId){
 /* ── HOME ── */
 function goHome(){
   stopAllTimers();
+  stopRealtimeSync();
   closeAllSheets();
   currentProject=null;
   currentContract=null;
