@@ -1745,34 +1745,26 @@ function openQtyEdit(entryId, row){
 
 async function confirmQtyEdit(){
   if(!qtyEditEntryId)return;
-  const v=Math.max(1,Math.min(9999,parseInt(document.getElementById('qtyInput').value)||1));
+  const v=Math.max(1,Math.min(9999,parseInt(document.getElementById("qtyInput").value)||1));
+  closeSheet("qtyOverlay");
+  document.getElementById("qtyInput")?.blur();
   try{
-    const {error}=await sb.from('log_entries').update({quantity:v}).eq('id',qtyEditEntryId);
-    if(error)throw error;
-    // Aggiorna la riga visivamente
-    if(qtyEditRow){
-      let badge=qtyEditRow.querySelector('.rec-qty');
-      const durWrap=qtyEditRow.querySelector('.rec-dur')?.parentElement;
-      if(v>1){
-        if(!badge){
-          badge=document.createElement('div'); badge.className='rec-qty';
-          durWrap?.appendChild(badge);
-        }
-        badge.textContent='×'+v;
-      } else {
-        badge?.remove();
-      }
+    const {error}=await sb.from("log_entries").update({quantity:v}).eq("id",qtyEditEntryId);
+    if(error){
+      if(error.message&&error.message.includes("quantity")){
+        toast("⚠ Colonna quantity mancante. Esegui ALTER TABLE log_entries ADD COLUMN quantity integer NOT NULL DEFAULT 1");
+      } else { throw error; }
+    } else {
+      const entry=logEntries.find(e=>e.id===qtyEditEntryId);
+      if(entry) entry.quantity=v;
+      renderHistory();
+      toast("✓ Quantità salvata: ×"+v);
     }
-    // Aggiorna anche in logEntries locale
-    const entry=logEntries.find(e=>e.id===qtyEditEntryId);
-    if(entry) entry.quantity=v;
-    toast('Quantità aggiornata: ×'+v);
-  }catch(e){toast('⚠ '+e.message);}
-  // Ripristina comportamento normale del bottone conferma
-  document.querySelector('#qtyOverlay .confirm-btn').onclick=confirmQty;
-  closeSheet('qtyOverlay');
-  document.getElementById('qtyInput')?.blur();
-  qtyEditEntryId=null; qtyEditRow=null;
+  }catch(e){ toast("⚠ "+e.message); }
+  finally{
+    document.querySelector("#qtyOverlay .confirm-btn").onclick=confirmQty;
+    qtyEditEntryId=null; qtyEditRow=null;
+  }
 }
 // Attacca pulsanti +/− overlay (dopo DOM ready)
 document.addEventListener('DOMContentLoaded',()=>{
