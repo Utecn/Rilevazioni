@@ -1736,21 +1736,27 @@ function confirmQty(){
 
 async function confirmQtyEdit(){
   if(!qtyEditEntryId) return;
-  const entryId = qtyEditEntryId; // cattura prima di qualsiasi reset
+  const entryId = qtyEditEntryId;
   const v = Math.max(1, Math.min(9999, parseInt(document.getElementById('qtyInput').value)||1));
-  qtyEditEntryId = null; // reset subito per evitare doppi click
+  qtyEditEntryId = null;
   closeSheet('qtyOverlay');
   try{
-    const {error} = await sb.from('log_entries')
+    console.log('[QTY] Updating entry', entryId, 'to quantity', v);
+    const res = await sb.from('log_entries')
       .update({quantity: v})
       .eq('id', entryId);
-    if(error) throw error;
+    console.log('[QTY] Update result:', JSON.stringify(res));
+    if(res.error) throw res.error;
+    // Verifica che l'aggiornamento sia avvenuto
+    const {data:check, error:ce} = await sb.from('log_entries').select('id,quantity').eq('id',entryId).single();
+    console.log('[QTY] DB check after update:', JSON.stringify(check), 'error:', JSON.stringify(ce));
     // Aggiorna dato locale
     const entry = logEntries.find(e => e.id === entryId);
-    if(entry) entry.quantity = v;
+    if(entry){ entry.quantity = check?.quantity ?? v; console.log('[QTY] Local entry updated to', entry.quantity); }
     renderHistory();
-    toast('✓ Quantità salvata: ×' + v);
+    toast('✓ Quantità salvata: ×' + (check?.quantity ?? v));
   } catch(e) {
+    console.error('[QTY] Error:', e);
     toast('⚠ ' + e.message);
   }
 }
