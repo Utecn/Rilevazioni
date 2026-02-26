@@ -860,6 +860,8 @@ async function doLogin(){
     if(!prof?.active){ await sb.auth.signOut(); throw new Error('Account disattivato'); }
     currentUser = { id:data.user.id, email:data.user.email, name:prof.name, role:prof.role };
     hideLoading();
+    await requestWakeLock();
+    await tryAutoFullscreen();
     afterLogin();
   } catch(e){
     hideLoading();
@@ -1570,7 +1572,33 @@ async function deleteContractConfirm(id,name){
   }catch(e){toast('Errore: '+e.message);}
 }
 
-/* ── FULLSCREEN ── */
+/* ── WAKE LOCK (schermo sempre acceso) ── */
+let wakeLock = null;
+
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', ()=>{ wakeLock=null; });
+    }
+  }catch(e){ /* non supportato o permesso negato */ }
+}
+
+// Riacquista sempre quando la pagina torna visibile
+document.addEventListener('visibilitychange', async ()=>{
+  if(document.visibilityState==='visible') await requestWakeLock();
+});
+
+/* ── AUTO FULLSCREEN all'avvio ── */
+async function tryAutoFullscreen(){
+  try{
+    const el = document.documentElement;
+    if(el.requestFullscreen) await el.requestFullscreen();
+    else if(el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+  }catch(e){ /* browser non supporta o utente ha già negato */ }
+}
+
+
 function toggleFullscreen(){
   const btn = document.getElementById('btnFs');
   const isFs = document.fullscreenElement || document.webkitFullscreenElement;
@@ -3133,12 +3161,16 @@ function showLogin(){
       if(prof?.active){
         currentUser={id:session.user.id,email:session.user.email,name:prof.name,role:prof.role};
         clearTimeout(safetyTimer);
+        await requestWakeLock();
+        await tryAutoFullscreen();
         hideLoading(); afterLogin(); return;
       }
     }
   } catch(e){ console.error('Boot error:', e); }
   clearTimeout(safetyTimer);
   showLogin();
+  // Tenta wake lock anche prima del login
+  requestWakeLock();
 })();
 </script>
 </body>
