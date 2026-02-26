@@ -1741,11 +1741,9 @@ async function confirmQtyEdit(){
   qtyEditEntryId = null; // reset subito per evitare doppi click
   closeSheet('qtyOverlay');
   try{
-    const {data, error} = await sb.from('log_entries')
+    const {error} = await sb.from('log_entries')
       .update({quantity: v})
-      .eq('id', entryId)
-      .select('id, quantity')
-      .single();
+      .eq('id', entryId);
     if(error) throw error;
     // Aggiorna dato locale
     const entry = logEntries.find(e => e.id === entryId);
