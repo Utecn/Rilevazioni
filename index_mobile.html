@@ -303,11 +303,16 @@ body.sort-mode .sort-handle{display:block;}
 .rec-user{font-size:9px;color:var(--purple);font-family:'Share Tech Mono',monospace;margin-top:1px;}
 .rec-dur{font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--orange);font-weight:700;white-space:nowrap;min-width:70px;text-align:right;}
 .rec-wrap{position:relative;overflow:hidden;border-bottom:1px solid var(--border);touch-action:pan-y;user-select:none;}
-.rec-del-bg{position:absolute;inset:0;background:var(--red);display:flex;align-items:center;justify-content:flex-end;padding-right:24px;opacity:0;pointer-events:none;}
+/* ── REC-WRAP: sfondo sinistro (elimina) e destro (riassegna) ── */
+.rec-del-bg{position:absolute;inset:0;background:var(--red);display:flex;align-items:center;justify-content:flex-end;padding-right:24px;opacity:0;pointer-events:none;z-index:0;}
 .rec-del-bg.show{pointer-events:all;}
 .rec-del-bg span{color:#fff;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;cursor:pointer;}
-.rec-row{display:flex;align-items:center;padding:10px 12px;gap:10px;position:relative;background:var(--bg);transition:transform .2s ease,background .2s;}
-.rec-row.swiped{background:rgba(255,51,85,.08);}
+.rec-ren-bg{position:absolute;inset:0;background:var(--purple);display:flex;align-items:center;justify-content:flex-start;padding-left:24px;opacity:0;pointer-events:none;z-index:0;}
+.rec-ren-bg.show{pointer-events:all;}
+.rec-ren-bg span{color:#fff;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;cursor:pointer;}
+.rec-row{display:flex;align-items:center;padding:10px 12px;gap:10px;position:relative;background:var(--bg);transition:transform .2s ease,background .2s;z-index:1;}
+.rec-row.swiped-left{background:rgba(255,51,85,.08);}
+.rec-row.swiped-right{background:rgba(179,136,255,.08);}
 .email-input{width:100%;padding:13px 12px;background:var(--card);border:1px solid var(--border2);border-radius:8px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:600;outline:none;margin-bottom:10px;transition:border-color .15s;}
 .email-input:focus{border-color:var(--green);}
 .exp-confirm{width:100%;padding:13px;background:var(--green);border:none;border-radius:8px;color:#000;font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;letter-spacing:2px;cursor:pointer;margin-bottom:8px;}
@@ -785,6 +790,15 @@ body.sort-mode .sort-handle{display:block;}
   </div>
   <button class="confirm-btn" id="qtyConfirmBtn">CONFERMA</button>
   <button class="sheet-cancel" onclick="closeSheet('qtyOverlay')">Annulla</button>
+</div></div>
+
+<div class="overlay" id="renameActivityOverlay"><div class="sheet">
+  <div class="sheet-title">RIASSEGNA ATTIVITÀ</div>
+  <div style="font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:14px;letter-spacing:.5px;">
+    Da: <span id="renameActFrom" style="color:var(--orange);"></span>
+  </div>
+  <div id="renameActList" style="display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;"></div>
+  <button class="sheet-cancel" style="margin-top:12px;" onclick="closeSheet('renameActivityOverlay')">Annulla</button>
 </div></div>
 
 <div class="toast" id="toast"></div>
@@ -2174,21 +2188,26 @@ function getFilteredLog(){
 }
 function attachSwipeDelete(wrap, row, delBg, entry){
   const entryId = typeof entry === 'object' ? entry.id : entry;
-  const DEL_W = 110;
-  let px=0, py=0, active=false, dir=null, swiped=false;
+  const DEL_W = 110;   // swipe sinistra → elimina
+  const REN_W = 120;   // swipe destra → riassegna
+
+  // Aggiungi sfondo destra (riassegna)
+  const renBg = document.createElement('div'); renBg.className='rec-ren-bg';
+  renBg.innerHTML='<span>RIASSEGNA</span>';
+  wrap.appendChild(renBg);
+
+  let px=0, py=0, active=false, dir=null, swipedLeft=false, swipedRight=false;
   let lpTimer=null, lpFired=false;
 
   wrap.addEventListener('pointerdown', e=>{
     px=e.clientX; py=e.clientY; active=true; dir=null; lpFired=false;
     wrap.setPointerCapture(e.pointerId);
     row.style.transition='none';
-    // long-press: 600ms fermo
+    delBg.style.transition='none';
+    renBg.style.transition='none';
     lpTimer=setTimeout(()=>{
       lpFired=true;
-      if(active && dir!=='h'){
-        vib(40);
-        openQtyEdit(entryId, row);
-      }
+      if(active && dir!=='h'){ vib(40); openQtyEdit(entryId, row); }
     },600);
   });
 
@@ -2202,32 +2221,57 @@ function attachSwipeDelete(wrap, row, delBg, entry){
     }
     if(dir==='v') return;
     e.preventDefault();
-    let shift;
-    if(!swiped) shift=Math.max(0, Math.min(-dx, DEL_W));
-    else shift=Math.max(0, Math.min(DEL_W+(-dx>0?-dx:0), DEL_W));
-    if(dx>0 && swiped) shift=Math.max(0,DEL_W-Math.abs(dx));
-    row.style.transform='translateX(-'+shift+'px)';
-    delBg.style.opacity=String((shift/DEL_W).toFixed(2));
+    if(dx < 0){
+      // Swipe sinistra → elimina
+      let shift = swipedLeft
+        ? Math.max(0, Math.min(DEL_W + (-dx - DEL_W), DEL_W))
+        : Math.max(0, Math.min(-dx, DEL_W));
+      if(dx>0 && swipedLeft) shift = Math.max(0, DEL_W - Math.abs(dx));
+      row.style.transform='translateX(-'+shift+'px)';
+      delBg.style.opacity=String((shift/DEL_W).toFixed(2));
+      renBg.style.opacity='0';
+    } else {
+      // Swipe destra → riassegna
+      let shift = swipedRight
+        ? Math.max(0, Math.min(REN_W, REN_W - (dx - REN_W)))
+        : Math.max(0, Math.min(dx, REN_W));
+      row.style.transform='translateX('+shift+'px)';
+      renBg.style.opacity=String((shift/REN_W).toFixed(2));
+      delBg.style.opacity='0';
+    }
   });
 
   wrap.addEventListener('pointerup', e=>{
     if(lpTimer){clearTimeout(lpTimer);lpTimer=null;}
     if(!active) return; active=false;
     if(lpFired) return;
-    if(dir!=='h'){ return; }
+    if(dir!=='h') return;
     const dx=e.clientX-px;
     row.style.transition='transform .25s ease';
     delBg.style.transition='opacity .25s ease';
-    if(!swiped && dx < -(DEL_W*0.45)){
-      swiped=true;
+    renBg.style.transition='opacity .25s ease';
+
+    if(dx < -(DEL_W*0.45) && !swipedLeft){
+      // Snap aperto a sinistra
+      swipedLeft=true; swipedRight=false;
       row.style.transform='translateX(-'+DEL_W+'px)';
-      delBg.style.opacity='1';
-      delBg.classList.add('show');
-    } else {
-      swiped=false;
+      delBg.style.opacity='1'; delBg.classList.add('show');
+      renBg.style.opacity='0'; renBg.classList.remove('show');
+      row.classList.add('swiped-left'); row.classList.remove('swiped-right');
+    } else if(dx > (REN_W*0.45) && !swipedRight){
+      // Snap aperto a destra → apri overlay riassegna
+      swipedRight=false; // chiudi subito
       row.style.transform='';
-      delBg.style.opacity='0';
-      delBg.classList.remove('show');
+      renBg.style.opacity='0'; renBg.classList.remove('show');
+      row.classList.remove('swiped-right');
+      openRenameActivity(entryId, row);
+    } else {
+      // Chiudi entrambi
+      swipedLeft=false; swipedRight=false;
+      row.style.transform='';
+      delBg.style.opacity='0'; delBg.classList.remove('show');
+      renBg.style.opacity='0'; renBg.classList.remove('show');
+      row.classList.remove('swiped-left','swiped-right');
     }
   });
 
@@ -2236,18 +2280,20 @@ function attachSwipeDelete(wrap, row, delBg, entry){
     active=false;
     row.style.transition='transform .25s ease';
     row.style.transform='';
-    delBg.style.opacity='0';
-    delBg.classList.remove('show');
-    swiped=false;
+    delBg.style.opacity='0'; delBg.classList.remove('show');
+    renBg.style.opacity='0'; renBg.classList.remove('show');
+    swipedLeft=false; swipedRight=false;
+    row.classList.remove('swiped-left','swiped-right');
   });
 
   document.addEventListener('pointerdown', e=>{
-    if(swiped && !wrap.contains(e.target)){
-      swiped=false;
+    if((swipedLeft||swipedRight) && !wrap.contains(e.target)){
+      swipedLeft=false; swipedRight=false;
       row.style.transition='transform .2s ease';
       row.style.transform='';
-      delBg.style.opacity='0';
-      delBg.classList.remove('show');
+      delBg.style.opacity='0'; delBg.classList.remove('show');
+      renBg.style.opacity='0'; renBg.classList.remove('show');
+      row.classList.remove('swiped-left','swiped-right');
     }
   });
 
@@ -2261,6 +2307,14 @@ function attachSwipeDelete(wrap, row, delBg, entry){
       setTimeout(async()=>{ wrap.remove(); await loadLog(); renderHistory(); },260);
       toast('Rilevazione eliminata');
     }catch(err){ toast('⚠ '+err.message); }
+  });
+
+  renBg.querySelector('span').addEventListener('click', e=>{
+    e.stopPropagation();
+    row.style.transform='';
+    renBg.style.opacity='0'; renBg.classList.remove('show');
+    swipedRight=false;
+    openRenameActivity(entryId, row);
   });
 }
 
@@ -2864,17 +2918,65 @@ async function loadAnagraficheAdmin(){
   finally{ hideLoading(); }
 }
 
-/* ── SHEET HELPERS ── */
+/* ── RIASSEGNA ATTIVITÀ STORICO ── */
+let renameActEntryId = null;
+
+function openRenameActivity(entryId, row){
+  renameActEntryId = entryId;
+  const currentName = row.querySelector('.rec-name')?.textContent || '';
+  document.getElementById('renameActFrom').textContent = currentName;
+
+  const list = document.getElementById('renameActList');
+  list.innerHTML = '';
+
+  // Prendi i nomi unici dalle card correnti del progetto
+  const names = [...new Set(cards.map(c=>c.name))].sort();
+  if(!names.length){
+    list.innerHTML='<div style="color:var(--dim);font-family:\'Share Tech Mono\',monospace;font-size:11px;padding:12px 0;text-align:center;">Nessun tasto disponibile</div>';
+  } else {
+    names.forEach(name=>{
+      const isCurrent = name === currentName;
+      const opt = document.createElement('div');
+      opt.style.cssText='display:flex;align-items:center;background:var(--card2);border:1px solid '+(isCurrent?'var(--orange)':'var(--border2)')+';border-radius:8px;padding:12px 14px;cursor:'+(isCurrent?'default':'pointer')+';gap:10px;';
+      opt.innerHTML=
+        '<span style="flex:1;font-size:15px;font-weight:700;color:'+(isCurrent?'var(--orange)':'var(--text)')+';">'+esc(name)+'</span>'+
+        (isCurrent?'<span style="font-family:\'Share Tech Mono\',monospace;font-size:10px;color:var(--orange);">ATTUALE</span>':'<span style="color:var(--purple);font-size:16px;">›</span>');
+      if(!isCurrent){
+        opt.addEventListener('click', ()=> doRenameActivity(name));
+      }
+      list.appendChild(opt);
+    });
+  }
+  showSheet('renameActivityOverlay');
+}
+
+async function doRenameActivity(newName){
+  if(!renameActEntryId) return;
+  const entryId = renameActEntryId;
+  renameActEntryId = null;
+  closeSheet('renameActivityOverlay');
+  try{
+    const {error} = await sb.from('log_entries')
+      .update({card_name: newName})
+      .eq('id', entryId);
+    if(error) throw error;
+    const entry = logEntries.find(e=>e.id===entryId);
+    if(entry) entry.card_name = newName;
+    renderHistory();
+    toast('✓ Attività cambiata in "' + newName + '"');
+  }catch(e){ toast('⚠ ' + e.message); }
+}
+
 function showSheet(id){ document.getElementById(id).classList.add('show'); }
 function closeSheet(id){
   document.getElementById(id).classList.remove('show');
   if(id==='qtyOverlay') document.getElementById('qtyInput')?.blur();
 }
 function closeAllSheets(){
-  ['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','newContractOverlay','qtyOverlay']
+  ['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay']
   .forEach(id=>document.getElementById(id).classList.remove('show'));
 }
-['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','newContractOverlay','qtyOverlay']
+['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay']
 .forEach(id=>document.getElementById(id).addEventListener('click',e=>{if(e.target.id===id)closeSheet(id);}));
 
 /* ── TOAST / LOADING ── */
