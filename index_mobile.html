@@ -586,6 +586,21 @@ body.sort-mode .sort-handle{display:block;}
     <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:5px;letter-spacing:1px;" id="newProjPreview">—</div>
   </div>
   <div style="margin-bottom:12px;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">REPARTO <span style="color:var(--dim);font-weight:400;">(opzionale)</span></div>
+    <div style="display:flex;gap:6px;margin-bottom:6px;">
+      <select class="text-input" id="newProjReparto" style="padding:10px 12px;font-size:14px;flex:1;"><option value="">— nessuno —</option></select>
+      <button type="button" id="newProjRepartoAddBtn" onclick="toggleNewRepartoInline()" style="flex-shrink:0;padding:0 14px;background:var(--card2);border:1px solid var(--border2);color:var(--cyan);border-radius:8px;font-size:18px;cursor:pointer;">＋</button>
+    </div>
+    <div id="newRepartoInline" style="display:none;">
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="newRepartoInput" class="text-input" placeholder="Nome reparto..." style="flex:1;margin-bottom:0;text-transform:uppercase;">
+        <button type="button" onclick="saveNewRepartoInline()" style="flex-shrink:0;padding:0 14px;background:var(--cyan);border:none;color:#000;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:Rajdhani,sans-serif;">SALVA</button>
+        <button type="button" onclick="cancelNewRepartoInline()" style="flex-shrink:0;padding:0 10px;background:var(--card2);border:1px solid var(--border2);color:var(--dim);border-radius:8px;font-size:13px;cursor:pointer;">✕</button>
+      </div>
+      <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:5px;letter-spacing:.5px;" id="newRepartoNote">il reparto verrà associato al magazzino dell'appalto</div>
+    </div>
+  </div>
+  <div style="margin-bottom:12px;">
     <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">RESPONSABILE</div>
     <select class="text-input" id="newProjResponsible" style="padding:10px 12px;font-size:14px;"></select>
   </div>
@@ -929,7 +944,7 @@ async function selectContract(contract){
   showLoading('CARICAMENTO...');
   try {
     const { data:projects, error } = await sb.from('projects')
-      .select('id,name,created_at,responsible_id').eq('contract_id',contract.id).order('created_at',{ascending:false});
+      .select('id,name,created_at,responsible_id,reparto_id').eq('contract_id',contract.id).order('created_at',{ascending:false});
     if(error) throw error;
     const counts = await Promise.all(projects.map(p =>
       sb.from('log_entries').select('id',{count:'exact',head:true}).eq('project_id',p.id)
@@ -940,6 +955,13 @@ async function selectContract(contract){
     if(respIds.length){
       const {data:resps}=await sb.from('profiles').select('id,name').in('id',respIds);
       (resps||[]).forEach(r=>respMap[r.id]=r.name);
+    }
+    // Fetch reparti names
+    const repartoIds=[...new Set((projects||[]).map(p=>p.reparto_id).filter(Boolean))];
+    let repartoMap={};
+    if(repartoIds.length){
+      const {data:reps}=await sb.from('reparti').select('id,name').in('id',repartoIds);
+      (reps||[]).forEach(r=>repartoMap[r.id]=r.name);
     }
     // Fetch user memberships for this contract's projects
     const projIds = (projects||[]).map(p=>p.id);
@@ -953,6 +975,7 @@ async function selectContract(contract){
       ...p,
       log_count: counts[i].count||0,
       responsible_name: respMap[p.responsible_id]||'—',
+      reparto_name: repartoMap[p.reparto_id]||null,
       isMember: memberProjIds.includes(p.id)
     }));
     renderProjects(enriched);
@@ -1037,7 +1060,7 @@ function buildProjRow(p){
           : p.isMember
             ? '<span style="color:var(--cyan)">◈ membro</span> · '+esc(p.responsible_name||'—')
             : esc(p.responsible_name||'—'))+
-        ' · '+p.log_count+' rilev.'+
+        ' · '+p.log_count+' rilev.'+(p.reparto_name?' · <span style="color:var(--cyan)">'+esc(p.reparto_name)+'</span>':'')+
       '</div>'+
     '</div>';
   item.addEventListener('click', ()=>selectProject(p));
@@ -1993,6 +2016,20 @@ async function openNewProjSheet(){
   dayEl.onchange = monEl.onchange = yrEl.onchange = updatePreview;
   document.getElementById('newProjInput').oninput = updatePreview;
 
+  // Popola reparti filtrati per magazzino dell'appalto corrente
+  const repartoSel = document.getElementById('newProjReparto');
+  repartoSel.innerHTML = '<option value="">— nessuno —</option>';
+  if(currentContract?.magazzino_id){
+    const {data:reparti} = await sb.from('reparti').select('id,name').eq('magazzino_id',currentContract.magazzino_id).order('name');
+    (reparti||[]).forEach(r=>{
+      const o=document.createElement('option'); o.value=r.id; o.textContent=r.name;
+      repartoSel.appendChild(o);
+    });
+  }
+  // Reset inline form
+  document.getElementById('newRepartoInline').style.display='none';
+  document.getElementById('newRepartoInput').value='';
+
   // Popola responsabili
   const sel = document.getElementById('newProjResponsible');
   sel.innerHTML = '<option value="">— caricamento —</option>';
@@ -2004,6 +2041,32 @@ async function openNewProjSheet(){
   showSheet('newProjOverlay');
   setTimeout(()=>document.getElementById('newProjInput').focus(),120);
 }
+function toggleNewRepartoInline(){
+  const wrap = document.getElementById('newRepartoInline');
+  const show = wrap.style.display==='none';
+  wrap.style.display = show ? 'block' : 'none';
+  if(show) setTimeout(()=>document.getElementById('newRepartoInput')?.focus(), 80);
+}
+function cancelNewRepartoInline(){
+  document.getElementById('newRepartoInline').style.display='none';
+  document.getElementById('newRepartoInput').value='';
+}
+async function saveNewRepartoInline(){
+  const name=(document.getElementById('newRepartoInput')?.value||'').trim().toUpperCase();
+  if(!name){ document.getElementById('newRepartoInput')?.focus(); return; }
+  const magazzinoId = currentContract?.magazzino_id || null;
+  try{
+    const {data,error}=await sb.from('reparti').insert({name,magazzino_id:magazzinoId}).select().single();
+    if(error) throw error;
+    // Aggiungi al select e seleziona
+    const sel=document.getElementById('newProjReparto');
+    const opt=document.createElement('option'); opt.value=data.id; opt.textContent=data.name;
+    sel.appendChild(opt); sel.value=data.id;
+    cancelNewRepartoInline();
+    toast('✓ Reparto "'+name+'" creato');
+  }catch(e){ toast(e.message.includes('unique')||e.message.includes('duplicate')?'Reparto già esistente':'⚠ '+e.message); }
+}
+
 async function doCreateProject(){
   const rawName=document.getElementById('newProjInput').value.trim(); if(!rawName){document.getElementById('newProjInput').focus();return;}
   const d=document.getElementById('newProjDay')?.value||'';
@@ -2012,7 +2075,8 @@ async function doCreateProject(){
   const name = (y&&m&&d) ? y+m+d+'_'+rawName : rawName;
   try {
     const responsibleId = document.getElementById('newProjResponsible')?.value || currentUser.id;
-    const {data,error}=await sb.from('projects').insert({name,created_by:currentUser.id,responsible_id:responsibleId,contract_id:currentContract?.id||null}).select().single();
+    const repartoId = document.getElementById('newProjReparto')?.value || null;
+    const {data,error}=await sb.from('projects').insert({name,created_by:currentUser.id,responsible_id:responsibleId,contract_id:currentContract?.id||null,reparto_id:repartoId||null}).select().single();
     if(error)throw error;
     const defaults=['01','02','03','04','05','06','07','08','09','10'];
     await sb.from('cards').insert(defaults.map((n,i)=>({project_id:data.id,name:n,position:i})));
@@ -2464,6 +2528,7 @@ async function adminCreateProject(){
 const ANA_TABLES = [
   { key:'clienti',              label:'CLIENTI',                   nameField:'name', hasAlias:true },
   { key:'magazzini',            label:'MAGAZZINI',                 nameField:'nome', extra:true },
+  { key:'reparti',              label:'REPARTI',                   nameField:'name', byMagazzino:true },
   { key:'marchi',               label:'MARCHI',                    nameField:'name' },
   { key:'business_types',       label:'BUSINESS',                  nameField:'name' },
   { key:'settori',              label:'SETTORI',                   nameField:'name' },
@@ -2476,9 +2541,100 @@ async function loadAnagraficheAdmin(){
   const wrap = document.getElementById('anagraficheList'); wrap.innerHTML='';
   showLoading('CARICAMENTO...');
   try{
-    const results = await Promise.all(ANA_TABLES.map(t=>sb.from(t.key).select('*').order(t.hasAlias?'alias':t.nameField)));
+    const results = await Promise.all(ANA_TABLES.map(t=>{
+      if(t.byMagazzino) return sb.from('reparti').select('id,name,magazzino_id,magazzini(nome,citta)').order('name');
+      return sb.from(t.key).select('*').order(t.hasAlias?'alias':t.nameField);
+    }));
     ANA_TABLES.forEach((t,i)=>{
       const rows = results[i].data||[];
+
+      // ── SEZIONE SPECIALE: REPARTI (raggruppati per magazzino) ──
+      if(t.byMagazzino){
+        const section = document.createElement('div'); section.className='ana-section';
+        section.innerHTML=
+          '<div class="ana-section-header">'+
+            '<span class="ana-section-title">'+t.label+'</span>'+
+            '<span class="ana-section-count">'+rows.length+' voci</span>'+
+          '</div>'+
+          '<div class="ana-section-body"></div>';
+        section.querySelector('.ana-section-header').addEventListener('click',()=>section.classList.toggle('open'));
+        const body = section.querySelector('.ana-section-body');
+        // Raggruppa per magazzino
+        const byMag={};
+        rows.forEach(r=>{
+          const magId=r.magazzino_id||'__none__';
+          if(!byMag[magId]) byMag[magId]={label:r.magazzini?(r.magazzini.nome+(r.magazzini.citta?' · '+r.magazzini.citta:'')):'Senza magazzino',rows:[]};
+          byMag[magId].rows.push(r);
+        });
+        Object.entries(byMag).forEach(([magId,group])=>{
+          const grpDiv=document.createElement('div'); grpDiv.style.cssText='margin-bottom:10px;';
+          grpDiv.innerHTML='<div style="font-size:10px;color:var(--purple);font-family:Share Tech Mono,monospace;letter-spacing:1px;margin-bottom:6px;">📦 '+esc(group.label)+'</div>';
+          const tagWrap=document.createElement('div'); tagWrap.style.cssText='display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;';
+          group.rows.forEach(r=>{
+            const tag=document.createElement('span'); tag.className='ana-tag'; tag.style.cursor='pointer';
+            tag.innerHTML='<span class="ana-tag-name" style="text-decoration:underline;text-decoration-style:dotted;" data-rid="'+r.id+'">'+esc(r.name)+'</span>'+(currentUser.role==='admin'?'<span class="ana-tag-del" data-id="'+r.id+'">✕</span>':'');
+            tagWrap.appendChild(tag);
+          });
+          grpDiv.appendChild(tagWrap);
+          const fw=document.createElement('div');
+          function renderRepartoForm(editRow=null){
+            fw.innerHTML='';
+            const isEdit=!!editRow; const curVal=isEdit?(editRow.name||''):'';
+            fw.innerHTML=
+              (isEdit?'<div style="font-size:10px;color:var(--orange);font-family:Share Tech Mono,monospace;margin-bottom:5px;">✏ '+esc(curVal)+'</div>':'')+
+              '<div style="display:flex;gap:6px;">'+
+                '<input class="ana-new-input" data-inp="val" placeholder="'+(isEdit?'MODIFICA...':'NUOVO REPARTO...')+'" value="'+esc(curVal)+'">'+
+                (isEdit
+                  ?'<button class="ana-save-btn" data-act="save" style="background:var(--orange);">💾</button><button class="ana-cancel-btn" data-act="cancel">✕</button><button class="ana-save-btn" data-act="del" style="background:var(--red);">🗑</button>'
+                  :'<button class="ana-save-btn" data-act="add">＋</button>')+
+              '</div>';
+            fw.querySelectorAll('[data-act]').forEach(btn=>{
+              btn.addEventListener('click',async()=>{
+                const act=btn.dataset.act;
+                if(act==='cancel'){renderRepartoForm(null);return;}
+                const name=(fw.querySelector('[data-inp="val"]')?.value||'').trim().toUpperCase();
+                const realMagId=magId==='__none__'?null:magId;
+                if(act==='del'){if(!confirm('Eliminare "'+curVal+'"?'))return;try{const{error}=await sb.from('reparti').delete().eq('id',editRow.id);if(error)throw error;await loadAnagraficheAdmin();toast('Eliminato');}catch(e){toast('⚠ '+e.message);}
+                }else if(act==='save'){if(!name){fw.querySelector('[data-inp="val"]')?.focus();return;}try{const{error}=await sb.from('reparti').update({name}).eq('id',editRow.id);if(error)throw error;await loadAnagraficheAdmin();toast('"'+name+'" aggiornato');}catch(e){toast(e.message.includes('unique')?'Esiste già':'⚠ '+e.message);}
+                }else{if(!name){fw.querySelector('[data-inp="val"]')?.focus();return;}try{const{error}=await sb.from('reparti').insert({name,magazzino_id:realMagId});if(error)throw error;await loadAnagraficheAdmin();toast('"'+name+'" aggiunto');}catch(e){toast(e.message.includes('unique')?'Esiste già':'⚠ '+e.message);}
+                }
+              });
+            });
+          }
+          renderRepartoForm(null);
+          tagWrap.querySelectorAll('.ana-tag-name').forEach(el=>{
+            el.addEventListener('click',e=>{e.stopPropagation();const rid=el.dataset.rid;const row=group.rows.find(r=>r.id===rid);if(!section.classList.contains('open'))section.classList.add('open');renderRepartoForm(row);fw.scrollIntoView({behavior:'smooth',block:'nearest'});});
+          });
+          tagWrap.querySelectorAll('.ana-tag-del').forEach(btn=>{
+            btn.addEventListener('click',async e=>{e.stopPropagation();const row=group.rows.find(r=>r.id===btn.dataset.id);if(!confirm('Eliminare "'+row?.name+'"?'))return;try{const{error}=await sb.from('reparti').delete().eq('id',btn.dataset.id);if(error)throw error;await loadAnagraficheAdmin();toast('Eliminato');}catch(e){toast('⚠ '+e.message);}});
+          });
+          grpDiv.appendChild(fw); body.appendChild(grpDiv);
+        });
+        if(rows.length===0) body.innerHTML+='<div style="color:var(--dim);font-family:Share Tech Mono,monospace;font-size:11px;padding:8px 0;">Nessun reparto. Aggiungili qui sotto o durante la creazione di un progetto.</div>';
+        // Form aggiungi reparto con scelta magazzino
+        const addSec=document.createElement('div'); addSec.style.cssText='margin-top:10px;border-top:1px solid var(--border);padding-top:10px;';
+        addSec.innerHTML=
+          '<div style="font-size:10px;color:var(--dim);font-family:Share Tech Mono,monospace;letter-spacing:1px;margin-bottom:8px;">AGGIUNGI REPARTO</div>'+
+          '<div style="display:flex;gap:6px;margin-bottom:6px;">'+
+            '<input class="ana-new-input" id="adm_rep_name" placeholder="NOME" style="flex:1.5;">'+
+            '<select class="ana-new-input" id="adm_rep_mag" style="flex:2;text-transform:none;"><option value="">— Senza magazzino —</option></select>'+
+          '</div>'+
+          '<button class="ana-save-btn" id="adm_rep_btn" style="width:100%;padding:10px;">＋ AGGIUNGI</button>';
+        body.appendChild(addSec);
+        sb.from('magazzini').select('id,nome,citta').order('nome').then(({data:mags})=>{
+          const sel=document.getElementById('adm_rep_mag');if(!sel)return;
+          (mags||[]).forEach(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=m.nome+(m.citta?' · '+m.citta:'');sel.appendChild(o);});
+        });
+        document.getElementById('adm_rep_btn')?.addEventListener('click',async()=>{
+          const name=(document.getElementById('adm_rep_name')?.value||'').trim().toUpperCase();
+          const magId=document.getElementById('adm_rep_mag')?.value||null;
+          if(!name){document.getElementById('adm_rep_name')?.focus();return;}
+          try{const{error}=await sb.from('reparti').insert({name,magazzino_id:magId||null});if(error)throw error;await loadAnagraficheAdmin();toast('"'+name+'" aggiunto');}catch(e){toast(e.message.includes('unique')?'Esiste già':'⚠ '+e.message);}
+        });
+        wrap.appendChild(section); return;
+      }
+
+      // ── SEZIONE NORMALE ──
       const section = document.createElement('div'); section.className='ana-section';
       section.innerHTML=
         '<div class="ana-section-header">'+
