@@ -199,6 +199,36 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Rajdha
 .restore-btn:hover{background:var(--orange);color:#fff;}
 .backup-empty{padding:40px 20px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--dim);line-height:2;}
 
+/* ── APPALTI FORM ── */
+.appalto-field{margin-bottom:14px;}
+.appalto-label{display:block;font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:5px;}
+.appalto-input-row{display:flex;gap:6px;align-items:center;}
+.appalto-input-row .form-select{flex:1;}
+.appalto-add-btn{flex-shrink:0;width:34px;height:38px;background:var(--orange);border:none;color:#fff;border-radius:6px;font-size:16px;cursor:pointer;font-weight:700;font-family:'Rajdhani',sans-serif;}
+.appalto-add-btn:hover{opacity:.85;}
+.appalto-inline-form{margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;}
+.appalto-inline-save{padding:0 12px;height:34px;background:var(--purple);border:none;color:#000;border-radius:6px;font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.appalto-inline-save:hover{opacity:.85;}
+.appalto-inline-cancel{flex-shrink:0;background:var(--card);border:1px solid var(--border2);color:var(--dim);padding:0 10px;height:34px;border-radius:6px;font-size:13px;cursor:pointer;}
+.appalto-detail-box{margin-top:6px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);line-height:1.8;letter-spacing:.5px;}
+.appalto-preview-box{background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:12px 14px;margin-top:16px;}
+.specialita-chip-a{display:inline-flex;align-items:center;gap:5px;background:rgba(179,136,255,.15);border:1px solid var(--purple);border-radius:4px;padding:3px 9px;font-size:12px;font-weight:600;color:var(--purple);}
+.specialita-chip-a-remove{cursor:pointer;color:var(--purple);opacity:.7;}
+.specialita-chip-a-remove:hover{opacity:1;}
+/* Appalti list */
+.appalto-card{background:var(--card);border:1px solid var(--border2);border-radius:10px;margin-bottom:10px;overflow:hidden;}
+.appalto-card-header{display:flex;align-items:flex-start;padding:13px 16px;gap:12px;cursor:pointer;transition:background .15s;}
+.appalto-card-header:hover{background:var(--card2);}
+.appalto-card-name{font-size:14px;font-weight:700;flex:1;}
+.appalto-card-meta{font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;line-height:1.7;}
+.appalto-card-body{display:none;padding:16px;border-top:1px solid var(--border);background:var(--card2);}
+.appalto-card.open .appalto-card-body{display:block;}
+.appalto-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin-bottom:14px;}
+@media(max-width:700px){.appalto-detail-grid{grid-template-columns:1fr;}}
+.appalto-detail-item{font-size:11px;font-family:'Share Tech Mono',monospace;}
+.appalto-detail-key{color:var(--dim);font-size:9px;letter-spacing:1px;display:block;margin-bottom:2px;}
+.appalto-detail-val{color:var(--text);font-weight:600;}
+
 /* ── TOAST ── */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--card2);border:1px solid var(--border2);color:var(--text);padding:9px 20px;border-radius:30px;font-family:'Share Tech Mono',monospace;font-size:12px;white-space:nowrap;opacity:0;pointer-events:none;z-index:3000;transition:opacity .2s,transform .2s;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -251,6 +281,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Rajdha
     <nav class="sidebar-nav">
       <div class="nav-item active" onclick="switchSection('users')" id="nav-users">
         <span class="nav-item-icon">👥</span> Utenti
+      </div>
+      <div class="nav-item" onclick="switchSection('appalti')" id="nav-appalti">
+        <span class="nav-item-icon">📋</span> Appalti
       </div>
       <div class="nav-item" onclick="switchSection('projects')" id="nav-projects">
         <span class="nav-item-icon">📁</span> Progetti
@@ -317,6 +350,167 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Rajdha
         </div>
       </div>
 
+      <!-- ── APPALTI ── -->
+      <div class="section" id="sectionAppalti">
+        <div class="two-col">
+          <!-- FORM NUOVO APPALTO -->
+          <div>
+            <div class="add-form">
+              <div class="add-form-title">NUOVO APPALTO</div>
+
+              <!-- CLIENTE -->
+              <div class="appalto-field">
+                <label class="appalto-label">CLIENTE *</label>
+                <div class="appalto-input-row">
+                  <select class="form-select" id="aCliente" onchange="updateAppaltoPreview()"></select>
+                  <button class="appalto-add-btn" onclick="toggleAppaltoInline('aCliente')" title="Aggiungi cliente">＋</button>
+                </div>
+                <div id="aCliente_new" class="appalto-inline-form" style="display:none;">
+                  <input type="text" id="aCliente_alias" class="form-input" placeholder="ALIAS (es. 3M)" style="text-transform:uppercase;margin-bottom:6px;">
+                  <input type="text" id="aCliente_input" class="form-input" placeholder="RAGIONE SOCIALE" style="margin-bottom:6px;">
+                  <div style="display:flex;gap:6px;"><button class="appalto-inline-save" onclick="saveAppaltoCliente()">SALVA</button><button class="appalto-inline-cancel" onclick="toggleAppaltoInline('aCliente')">✕</button></div>
+                </div>
+                <div id="aCliente_detail" class="appalto-detail-box" style="display:none;"></div>
+              </div>
+
+              <!-- MAGAZZINO -->
+              <div class="appalto-field">
+                <label class="appalto-label">MAGAZZINO *</label>
+                <div class="appalto-input-row">
+                  <select class="form-select" id="aMagazzino" onchange="onMagazzinoChange()"></select>
+                  <button class="appalto-add-btn" onclick="toggleAppaltoInline('aMagazzino')" title="Aggiungi magazzino">＋</button>
+                </div>
+                <div id="aMagazzino_new" class="appalto-inline-form" style="display:none;">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+                    <input type="text" id="aMag_citta" class="form-input" placeholder="CITTÀ *" style="text-transform:uppercase;">
+                    <input type="text" id="aMag_edificio" class="form-input" placeholder="EDIFICIO" style="text-transform:uppercase;">
+                    <input type="text" id="aMag_via" class="form-input" placeholder="VIA" style="text-transform:uppercase;">
+                    <input type="text" id="aMag_civico" class="form-input" placeholder="N° CIVICO">
+                    <input type="text" id="aMag_cap" class="form-input" placeholder="CAP">
+                    <input type="text" id="aMag_provincia" class="form-input" placeholder="PROV" style="text-transform:uppercase;max-width:80px;">
+                  </div>
+                  <div style="display:flex;gap:6px;"><button class="appalto-inline-save" onclick="saveAppaltoMagazzino()">SALVA</button><button class="appalto-inline-cancel" onclick="toggleAppaltoInline('aMagazzino')">✕</button></div>
+                </div>
+                <!-- Dettaglio magazzino selezionato -->
+                <div id="aMagazzino_detail" class="appalto-detail-box" style="display:none;"></div>
+              </div>
+
+              <!-- MARCHIO -->
+              <div class="appalto-field">
+                <label class="appalto-label">MARCHIO</label>
+                <div class="appalto-input-row">
+                  <select class="form-select" id="aMarchio" onchange="updateAppaltoPreview()"></select>
+                  <button class="appalto-add-btn" onclick="toggleAppaltoInline('aMarchio')" title="Aggiungi marchio">＋</button>
+                </div>
+                <div id="aMarchio_new" class="appalto-inline-form" style="display:none;">
+                  <div style="display:flex;gap:6px;">
+                    <input type="text" id="aMarchio_input" class="form-input" placeholder="MARCHIO..." style="text-transform:uppercase;">
+                    <button class="appalto-inline-save" onclick="saveAppaltoLookup('aMarchio','marchi')">SALVA</button>
+                    <button class="appalto-inline-cancel" onclick="toggleAppaltoInline('aMarchio')">✕</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- BUSINESS TYPE -->
+              <div class="appalto-field">
+                <label class="appalto-label">BUSINESS TYPE *</label>
+                <div class="appalto-input-row">
+                  <select class="form-select" id="aBusiness"></select>
+                  <button class="appalto-add-btn" onclick="toggleAppaltoInline('aBusiness')">＋</button>
+                </div>
+                <div id="aBusiness_new" class="appalto-inline-form" style="display:none;">
+                  <div style="display:flex;gap:6px;">
+                    <input type="text" id="aBusiness_input" class="form-input" placeholder="BUSINESS TYPE..." style="text-transform:uppercase;">
+                    <button class="appalto-inline-save" onclick="saveAppaltoLookup('aBusiness','business_types')">SALVA</button>
+                    <button class="appalto-inline-cancel" onclick="toggleAppaltoInline('aBusiness')">✕</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- SETTORE -->
+              <div class="appalto-field">
+                <label class="appalto-label">SETTORE *</label>
+                <div class="appalto-input-row">
+                  <select class="form-select" id="aSettore"></select>
+                  <button class="appalto-add-btn" onclick="toggleAppaltoInline('aSettore')">＋</button>
+                </div>
+                <div id="aSettore_new" class="appalto-inline-form" style="display:none;">
+                  <div style="display:flex;gap:6px;">
+                    <input type="text" id="aSettore_input" class="form-input" placeholder="SETTORE..." style="text-transform:uppercase;">
+                    <button class="appalto-inline-save" onclick="saveAppaltoLookup('aSettore','settori')">SALVA</button>
+                    <button class="appalto-inline-cancel" onclick="toggleAppaltoInline('aSettore')">✕</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- SPECIALITÀ (multi) -->
+              <div class="appalto-field">
+                <label class="appalto-label">SPECIALITÀ</label>
+                <div id="aSpecialitaChips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;"></div>
+                <div class="appalto-input-row">
+                  <select class="form-select" id="aSpecialita"></select>
+                  <button class="appalto-add-btn" onclick="addAppaltoSpecialita()">＋</button>
+                  <button class="appalto-add-btn" style="background:var(--card2);border-color:var(--border2);color:var(--dim);" onclick="toggleAppaltoInline('aSpecialita')">new</button>
+                </div>
+                <div id="aSpecialita_new" class="appalto-inline-form" style="display:none;">
+                  <div style="display:flex;gap:6px;">
+                    <input type="text" id="aSpecialita_input" class="form-input" placeholder="SPECIALITÀ..." style="text-transform:uppercase;">
+                    <button class="appalto-inline-save" onclick="saveAppaltoLookup('aSpecialita','specialita')">SALVA</button>
+                    <button class="appalto-inline-cancel" onclick="toggleAppaltoInline('aSpecialita')">✕</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TEMPERATURA -->
+              <div class="appalto-field">
+                <label class="appalto-label">TEMPERATURA *</label>
+                <div class="appalto-input-row">
+                  <select class="form-select" id="aTemperatura"></select>
+                  <button class="appalto-add-btn" onclick="toggleAppaltoInline('aTemperatura')">＋</button>
+                </div>
+                <div id="aTemperatura_new" class="appalto-inline-form" style="display:none;">
+                  <div style="display:flex;gap:6px;">
+                    <input type="text" id="aTemperatura_input" class="form-input" placeholder="TEMPERATURA..." style="text-transform:uppercase;">
+                    <button class="appalto-inline-save" onclick="saveAppaltoLookup('aTemperatura','temperature')">SALVA</button>
+                    <button class="appalto-inline-cancel" onclick="toggleAppaltoInline('aTemperatura')">✕</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- UNITÀ MOVIMENTAZIONE -->
+              <div class="appalto-field">
+                <label class="appalto-label">UNITÀ MOVIMENTAZIONE *</label>
+                <div class="appalto-input-row">
+                  <select class="form-select" id="aUnita"></select>
+                  <button class="appalto-add-btn" onclick="toggleAppaltoInline('aUnita')">＋</button>
+                </div>
+                <div id="aUnita_new" class="appalto-inline-form" style="display:none;">
+                  <div style="display:flex;gap:6px;">
+                    <input type="text" id="aUnita_input" class="form-input" placeholder="UNITÀ..." style="text-transform:uppercase;">
+                    <button class="appalto-inline-save" onclick="saveAppaltoLookup('aUnita','unita_movimentazione')">SALVA</button>
+                    <button class="appalto-inline-cancel" onclick="toggleAppaltoInline('aUnita')">✕</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- PREVIEW NOME -->
+              <div class="appalto-preview-box">
+                <div style="font-size:9px;color:var(--dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:4px;">ANTEPRIMA NOME APPALTO</div>
+                <div id="aPreview" style="font-size:14px;font-weight:700;color:var(--orange);">—</div>
+              </div>
+
+              <button class="form-submit full" style="background:var(--purple);margin-top:14px;" onclick="adminDoCreateContract()">＋ CREA APPALTO</button>
+            </div>
+          </div>
+
+          <!-- LISTA APPALTI -->
+          <div>
+            <div class="page-title">APPALTI ESISTENTI</div>
+            <div id="appaltiAdminList"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- ── PROGETTI ── -->
       <div class="section" id="sectionProjects">
         <div class="two-col">
@@ -366,6 +560,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Rajdha
     <div class="mobile-nav">
       <div class="mobile-nav-item active" onclick="switchSection('users')" id="mnav-users">
         <span class="mobile-nav-icon">👥</span>UTENTI
+      </div>
+      <div class="mobile-nav-item" onclick="switchSection('appalti')" id="mnav-appalti">
+        <span class="mobile-nav-icon">📋</span>APPALTI
       </div>
       <div class="mobile-nav-item" onclick="switchSection('projects')" id="mnav-projects">
         <span class="mobile-nav-icon">📁</span>PROGETTI
@@ -477,20 +674,16 @@ function afterLogin(){
 let _currentSection = 'users';
 function switchSection(sec){
   _currentSection = sec;
-  ['users','projects','anagrafiche','backup'].forEach(s=>{
-    document.getElementById('sectionUsers'.replace('users',s.charAt(0).toUpperCase()+s.slice(1))||'section'+s.charAt(0).toUpperCase()+s.slice(1))?.classList.toggle('active', s===sec);
+  const sections = ['users','appalti','projects','anagrafiche','backup'];
+  const idMap = { users:'sectionUsers', appalti:'sectionAppalti', projects:'sectionProjects', anagrafiche:'sectionAnagrafiche', backup:'sectionBackup' };
+  sections.forEach(s=>{
+    document.getElementById(idMap[s])?.classList.toggle('active', s===sec);
     document.getElementById('nav-'+s)?.classList.toggle('active', s===sec);
     document.getElementById('mnav-'+s)?.classList.toggle('active', s===sec);
   });
-  // Fix IDs
-  document.getElementById('sectionUsers').classList.toggle('active', sec==='users');
-  document.getElementById('sectionProjects').classList.toggle('active', sec==='projects');
-  document.getElementById('sectionAnagrafiche').classList.toggle('active', sec==='anagrafiche');
-  document.getElementById('sectionBackup').classList.toggle('active', sec==='backup');
-  ['users','projects','anagrafiche','backup'].forEach(s=>{
-    document.getElementById('nav-'+s)?.classList.toggle('active',s===sec);
-    document.getElementById('mnav-'+s)?.classList.toggle('active',s===sec);
-  });
+  const titleMap = { users:'UTENTI', appalti:'APPALTI', projects:'PROGETTI', anagrafiche:'ANAGRAFICHE', backup:'BACKUP' };
+  document.getElementById('mainHeaderSub').textContent = titleMap[sec]||'';
+  if(sec==='appalti') loadAdminAppalti();
   if(sec==='anagrafiche' && !document.getElementById('anagraficheList').children.length) loadAnagraficheAdmin();
   if(sec==='backup') fetchAndRenderBackup();
 }
@@ -782,6 +975,313 @@ async function loadAnagraficheAdmin(){
     });
   }catch(e){ wrap.innerHTML='<div style="color:var(--red);padding:20px;font-family:Share Tech Mono,monospace;">'+esc(e.message)+'</div>'; }
   finally{ hideLoading(); }
+}
+
+/* ── APPALTI ── */
+let adminContractLookups = { clienti:[], magazzini:[], marchi:[], business_types:[], settori:[], specialita:[], temperature:[], unita_movimentazione:[] };
+let adminSelectedSpecialita = [];
+
+async function loadAdminAppalti(){
+  showLoading('CARICAMENTO...');
+  try{
+    await loadAdminContractLookups();
+    populateAdminContractSelects();
+    renderAdminAppaltoSpecialitaChips();
+    await loadAppaltiList();
+  }catch(e){ toast('⚠ '+e.message); }
+  finally{ hideLoading(); }
+}
+
+async function loadAdminContractLookups(){
+  const [cl,ma,mr,bt,se,sp,te,un] = await Promise.all([
+    sb.from('clienti').select('id,alias,name').order('alias'),
+    sb.from('magazzini').select('id,nome,citta,via,civico,cap,provincia,edificio').order('nome'),
+    sb.from('marchi').select('id,name').order('name'),
+    sb.from('business_types').select('id,name').order('name'),
+    sb.from('settori').select('id,name').order('name'),
+    sb.from('specialita').select('id,name').order('name'),
+    sb.from('temperature').select('id,name').order('name'),
+    sb.from('unita_movimentazione').select('id,name').order('name'),
+  ]);
+  adminContractLookups.clienti            = cl.data||[];
+  adminContractLookups.magazzini          = ma.data||[];
+  adminContractLookups.marchi             = mr.data||[];
+  adminContractLookups.business_types     = bt.data||[];
+  adminContractLookups.settori            = se.data||[];
+  adminContractLookups.specialita         = sp.data||[];
+  adminContractLookups.temperature        = te.data||[];
+  adminContractLookups.unita_movimentazione = un.data||[];
+}
+
+function populateAdminContractSelects(){
+  function fill(id, arr, labelFn, emptyLabel='— seleziona —', optional=false){
+    const sel = document.getElementById(id); if(!sel) return;
+    sel.innerHTML = (optional?'<option value="">— nessuno —</option>':'<option value="">'+emptyLabel+'</option>')+
+      arr.map(x=>'<option value="'+x.id+'">'+esc(labelFn(x))+'</option>').join('');
+  }
+  fill('aCliente',    adminContractLookups.clienti,              x=>x.alias||(x.name||'—'));
+  fill('aMagazzino',  adminContractLookups.magazzini,            x=>x.nome+(x.edificio?' · '+x.edificio:''));
+  fill('aMarchio',    adminContractLookups.marchi,               x=>x.name, '— nessuno —', true);
+  fill('aBusiness',   adminContractLookups.business_types,       x=>x.name);
+  fill('aSettore',    adminContractLookups.settori,              x=>x.name);
+  fill('aSpecialita', adminContractLookups.specialita,           x=>x.name);
+  fill('aTemperatura',adminContractLookups.temperature,          x=>x.name);
+  fill('aUnita',      adminContractLookups.unita_movimentazione, x=>x.name);
+}
+
+function updateAppaltoPreview(){
+  const clienteId   = document.getElementById('aCliente')?.value;
+  const magazzinoId = document.getElementById('aMagazzino')?.value;
+  const marchioId   = document.getElementById('aMarchio')?.value;
+  const clienteObj  = adminContractLookups.clienti.find(c=>c.id===clienteId);
+  const magObj      = adminContractLookups.magazzini.find(m=>m.id===magazzinoId);
+  const marchioObj  = adminContractLookups.marchi.find(m=>m.id===marchioId);
+  const parts = [
+    clienteObj?(clienteObj.alias||clienteObj.name):'',
+    magObj?magObj.nome+(magObj.edificio?' '+magObj.edificio:''):'',
+    marchioObj?marchioObj.name:''
+  ].filter(Boolean);
+  document.getElementById('aPreview').textContent = parts.join(' · ') || '—';
+  // Mostra dettaglio cliente
+  const cBox = document.getElementById('aCliente_detail');
+  if(clienteObj && clienteObj.name){
+    cBox.style.display='block';
+    cBox.innerHTML = '<span style="color:var(--orange);">'+esc(clienteObj.alias||'')+'</span>'+(clienteObj.alias?'  ·  ':'')+'<span style="color:var(--text);">'+esc(clienteObj.name)+'</span>';
+  } else { cBox.style.display='none'; }
+}
+
+function onMagazzinoChange(){
+  updateAppaltoPreview();
+  const magazzinoId = document.getElementById('aMagazzino')?.value;
+  const magObj = adminContractLookups.magazzini.find(m=>m.id===magazzinoId);
+  const box = document.getElementById('aMagazzino_detail');
+  if(magObj){
+    box.style.display='block';
+    const rows = [
+      ['NOME',     magObj.nome],
+      ['EDIFICIO', magObj.edificio||'—'],
+      ['INDIRIZZO',[ magObj.via, magObj.civico ].filter(Boolean).join(' ')||'—'],
+      ['CAP',      magObj.cap||'—'],
+      ['CITTÀ',    magObj.citta||'—'],
+      ['PROV',     magObj.provincia||'—'],
+    ];
+    box.innerHTML = rows.map(([k,v])=>'<span style="color:var(--dim);">'+k+'</span>  <span style="color:var(--text);font-weight:700;">'+esc(v)+'</span>').join('<br>');
+  } else { box.style.display='none'; }
+}
+
+function toggleAppaltoInline(fieldId){
+  const wrap = document.getElementById(fieldId+'_new'); if(!wrap) return;
+  wrap.style.display = wrap.style.display==='none'?'block':'none';
+  if(wrap.style.display==='block'){
+    const inp = wrap.querySelector('input'); if(inp) setTimeout(()=>inp.focus(),60);
+  }
+}
+
+async function saveAppaltoCliente(){
+  const alias = document.getElementById('aCliente_alias')?.value.trim().toUpperCase();
+  const name  = document.getElementById('aCliente_input')?.value.trim();
+  if(!name){ document.getElementById('aCliente_input')?.focus(); return; }
+  try{
+    const {data,error} = await sb.from('clienti').insert({alias:alias||null, name}).select().single();
+    if(error) throw error;
+    adminContractLookups.clienti.push(data);
+    adminContractLookups.clienti.sort((a,b)=>(a.alias||a.name).localeCompare(b.alias||b.name));
+    const sel = document.getElementById('aCliente');
+    const opt = document.createElement('option'); opt.value=data.id; opt.textContent=esc(data.alias||data.name);
+    sel.appendChild(opt); sel.value=data.id;
+    document.getElementById('aCliente_alias').value='';
+    document.getElementById('aCliente_input').value='';
+    toggleAppaltoInline('aCliente');
+    updateAppaltoPreview();
+    toast('✓ Cliente "'+( data.alias||data.name)+'" aggiunto');
+  }catch(e){ toast(e.message.includes('unique')?'Cliente già esistente':'⚠ '+e.message); }
+}
+
+async function saveAppaltoMagazzino(){
+  const citta    = document.getElementById('aMag_citta')?.value.trim().toUpperCase();
+  const edificio = document.getElementById('aMag_edificio')?.value.trim().toUpperCase();
+  const via      = document.getElementById('aMag_via')?.value.trim().toUpperCase();
+  const civico   = document.getElementById('aMag_civico')?.value.trim();
+  const cap      = document.getElementById('aMag_cap')?.value.trim();
+  const provincia= document.getElementById('aMag_provincia')?.value.trim().toUpperCase();
+  if(!citta){ document.getElementById('aMag_citta')?.focus(); return; }
+  const nome = citta+(edificio?'-'+edificio:'');
+  try{
+    const {data,error} = await sb.from('magazzini').insert({nome,citta,edificio:edificio||null,via:via||null,civico:civico||null,cap:cap||null,provincia:provincia||null,created_by:currentUser.id}).select().single();
+    if(error) throw error;
+    adminContractLookups.magazzini.push(data);
+    adminContractLookups.magazzini.sort((a,b)=>a.nome.localeCompare(b.nome));
+    const sel = document.getElementById('aMagazzino');
+    const label = data.nome+(data.edificio?' · '+data.edificio:'');
+    const opt = document.createElement('option'); opt.value=data.id; opt.textContent=esc(label);
+    sel.appendChild(opt); sel.value=data.id;
+    ['aMag_citta','aMag_edificio','aMag_via','aMag_civico','aMag_cap','aMag_provincia'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    toggleAppaltoInline('aMagazzino');
+    onMagazzinoChange();
+    toast('✓ Magazzino "'+nome+'" aggiunto');
+  }catch(e){ toast(e.message.includes('unique')?'Magazzino già esistente':'⚠ '+e.message); }
+}
+
+async function saveAppaltoLookup(fieldId, table){
+  const inp = document.getElementById(fieldId+'_input');
+  const name = inp?.value.trim().toUpperCase();
+  if(!name){ inp?.focus(); return; }
+  // Mappa fieldId → chiave in adminContractLookups
+  const keyMap = { aMarchio:'marchi', aBusiness:'business_types', aSettore:'settori', aSpecialita:'specialita', aTemperatura:'temperature', aUnita:'unita_movimentazione' };
+  try{
+    const {data,error} = await sb.from(table).insert({name}).select().single();
+    if(error) throw error;
+    const key = keyMap[fieldId];
+    if(key){ adminContractLookups[key].push(data); adminContractLookups[key].sort((a,b)=>a.name.localeCompare(b.name)); }
+    const sel = document.getElementById(fieldId);
+    const opt = document.createElement('option'); opt.value=data.id; opt.textContent=esc(data.name);
+    sel.appendChild(opt); sel.value=data.id;
+    inp.value='';
+    toggleAppaltoInline(fieldId);
+    toast('✓ "'+name+'" aggiunto');
+  }catch(e){ toast(e.message.includes('unique')?'"'+name+'" già esistente':'⚠ '+e.message); }
+}
+
+function renderAdminAppaltoSpecialitaChips(){
+  const wrap = document.getElementById('aSpecialitaChips'); if(!wrap) return;
+  wrap.innerHTML = adminSelectedSpecialita.map(s=>
+    '<span class="specialita-chip-a">'+esc(s.name)+
+    '<span class="specialita-chip-a-remove" data-id="'+s.id+'">✕</span></span>'
+  ).join('');
+  wrap.querySelectorAll('.specialita-chip-a-remove').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      adminSelectedSpecialita = adminSelectedSpecialita.filter(s=>s.id!==btn.dataset.id);
+      renderAdminAppaltoSpecialitaChips();
+    });
+  });
+}
+
+function addAppaltoSpecialita(){
+  const sel = document.getElementById('aSpecialita'); if(!sel||!sel.value) return;
+  const id=sel.value, name=sel.selectedOptions[0].text;
+  if(adminSelectedSpecialita.find(s=>s.id===id)){ toast('Già selezionata'); return; }
+  adminSelectedSpecialita.push({id,name});
+  renderAdminAppaltoSpecialitaChips();
+}
+
+async function adminDoCreateContract(){
+  const clienteId    = document.getElementById('aCliente')?.value;
+  const magazzinoId  = document.getElementById('aMagazzino')?.value;
+  const marchioId    = document.getElementById('aMarchio')?.value||null;
+  const businessId   = document.getElementById('aBusiness')?.value;
+  const settoreId    = document.getElementById('aSettore')?.value;
+  const temperaturaId= document.getElementById('aTemperatura')?.value;
+  const unitaId      = document.getElementById('aUnita')?.value;
+  if(!clienteId||!magazzinoId||!businessId||!settoreId||!temperaturaId||!unitaId){
+    toast('Compila i campi obbligatori (*)'); return;
+  }
+  const name = document.getElementById('aPreview')?.textContent||'—';
+  try{
+    showLoading('CREAZIONE...');
+    const {data,error} = await sb.from('contracts').insert({
+      name, created_by:currentUser.id,
+      cliente_id:clienteId, magazzino_id:magazzinoId, marchio_id:marchioId,
+      business_id:businessId, settore_id:settoreId,
+      temperatura_id:temperaturaId, unita_id:unitaId
+    }).select().single();
+    if(error) throw error;
+    if(adminSelectedSpecialita.length){
+      await sb.from('contract_specialita').insert(
+        adminSelectedSpecialita.map(s=>({contract_id:data.id, specialita_id:s.id}))
+      );
+    }
+    // Reset form
+    adminSelectedSpecialita=[];
+    renderAdminAppaltoSpecialitaChips();
+    populateAdminContractSelects();
+    document.getElementById('aPreview').textContent='—';
+    document.getElementById('aCliente_detail').style.display='none';
+    document.getElementById('aMagazzino_detail').style.display='none';
+    await loadAppaltiList();
+    toast('✓ Appalto "'+name+'" creato');
+  }catch(e){ toast('⚠ '+e.message); }
+  finally{ hideLoading(); }
+}
+
+async function loadAppaltiList(){
+  const wrap = document.getElementById('appaltiAdminList'); if(!wrap) return;
+  wrap.innerHTML='<div class="empty-msg">CARICAMENTO...</div>';
+  try{
+    const {data:contracts, error} = await sb.from('contracts')
+      .select(`id,name,created_at,
+        clienti(alias,name),
+        magazzini(nome,citta,via,civico,cap,provincia,edificio),
+        marchi(name),
+        business_types(name),
+        settori(name),
+        temperature(name),
+        unita_movimentazione(name)
+      `).order('name');
+    if(error) throw error;
+    // Carica specialità per ogni contratto
+    const specMap = {};
+    if(contracts?.length){
+      const {data:allSpecs} = await sb.from('contract_specialita')
+        .select('contract_id, specialita(name)')
+        .in('contract_id', contracts.map(c=>c.id));
+      (allSpecs||[]).forEach(s=>{
+        if(!specMap[s.contract_id]) specMap[s.contract_id]=[];
+        specMap[s.contract_id].push(s.specialita?.name||'');
+      });
+    }
+    if(!contracts?.length){ wrap.innerHTML='<div class="empty-msg">Nessun appalto.</div>'; return; }
+    wrap.innerHTML='<div class="section-count">'+contracts.length+' appalti</div>';
+    contracts.forEach(c=>{
+      const mag = c.magazzini;
+      const magLabel = mag ? [mag.via, mag.civico].filter(Boolean).join(' ') : '—';
+      const magFull  = mag ? [mag.nome+(mag.edificio?' · '+mag.edificio:''), magLabel, mag.cap, mag.citta, mag.provincia].filter(Boolean).join('  ·  ') : '—';
+      const specs = (specMap[c.id]||[]).join(', ')||'—';
+      const card = document.createElement('div'); card.className='appalto-card';
+      card.innerHTML=
+        '<div class="appalto-card-header">'+
+          '<div style="flex:1;">'+
+            '<div class="appalto-card-name">'+esc(c.name)+'</div>'+
+            '<div class="appalto-card-meta">'+
+              esc(c.clienti?.alias||c.clienti?.name||'—')+' · '+
+              esc(mag?.nome||'—')+(mag?.edificio?' · '+esc(mag.edificio):'')+' · '+
+              esc(c.marchi?.name||'—')+
+            '</div>'+
+          '</div>'+
+          '<span class="chevron">▾</span>'+
+        '</div>'+
+        '<div class="appalto-card-body">'+
+          '<div class="appalto-detail-grid">'+
+            '<div class="appalto-detail-item"><span class="appalto-detail-key">CLIENTE</span><span class="appalto-detail-val">'+esc(c.clienti?.name||'—')+'</span></div>'+
+            '<div class="appalto-detail-item"><span class="appalto-detail-key">ALIAS CLIENTE</span><span class="appalto-detail-val">'+esc(c.clienti?.alias||'—')+'</span></div>'+
+            '<div class="appalto-detail-item"><span class="appalto-detail-key">MAGAZZINO</span><span class="appalto-detail-val">'+esc(mag?.nome||'—')+(mag?.edificio?'<span style="color:var(--purple);"> · '+esc(mag.edificio)+'</span>':'')+'</span></div>'+
+            '<div class="appalto-detail-item"><span class="appalto-detail-key">INDIRIZZO</span><span class="appalto-detail-val">'+esc(magLabel)+'</span></div>'+
+            '<div class="appalto-detail-item"><span class="appalto-detail-key">CAP · CITTÀ</span><span class="appalto-detail-val">'+esc((mag?.cap||'')+(mag?.citta?' '+mag.citta:''))+'</span></div>'+
+            '<div class="appalto-detail-item"><span class="appalto-detail-key">PROVINCIA</span><span class="appalto-detail-val">'+esc(mag?.provincia||'—')+'</span></div>'+
+            '<div class="appalto-detail-item"><span class="appalto-detail-key">MARCHIO</span><span class="appalto-detail-val">'+esc(c.marchi?.name||'—')+'</span></div>'+
+            '<div class="appalto-detail-item"><span class="appalto-detail-key">BUSINESS TYPE</span><span class="appalto-detail-val">'+esc(c.business_types?.name||'—')+'</span></div>'+
+            '<div class="appalto-detail-item"><span class="appalto-detail-key">SETTORE</span><span class="appalto-detail-val">'+esc(c.settori?.name||'—')+'</span></div>'+
+            '<div class="appalto-detail-item"><span class="appalto-detail-key">TEMPERATURA</span><span class="appalto-detail-val">'+esc(c.temperature?.name||'—')+'</span></div>'+
+            '<div class="appalto-detail-item"><span class="appalto-detail-key">UNITÀ MOVIM.</span><span class="appalto-detail-val">'+esc(c.unita_movimentazione?.name||'—')+'</span></div>'+
+            '<div class="appalto-detail-item"><span class="appalto-detail-key">SPECIALITÀ</span><span class="appalto-detail-val">'+esc(specs)+'</span></div>'+
+          '</div>'+
+          '<div style="display:flex;gap:8px;">'+
+            '<button class="proj-action-btn del" data-cid="'+c.id+'" data-cname="'+esc(c.name)+'">🗑 Elimina</button>'+
+          '</div>'+
+        '</div>';
+      card.querySelector('.appalto-card-header').addEventListener('click',()=>card.classList.toggle('open'));
+      card.querySelector('.proj-action-btn.del').addEventListener('click',async e=>{
+        const btn=e.currentTarget;
+        if(!confirm('Eliminare appalto "'+btn.dataset.cname+'" e tutti i suoi progetti?')) return;
+        try{
+          const {error}=await sb.from('contracts').delete().eq('id',btn.dataset.cid);
+          if(error) throw error;
+          await loadAppaltiList();
+          toast('Appalto eliminato');
+        }catch(err){ toast('⚠ '+err.message); }
+      });
+      wrap.appendChild(card);
+    });
+  }catch(e){ wrap.innerHTML='<div class="empty-msg">⚠ '+esc(e.message)+'</div>'; }
 }
 
 /* ── BACKUP ── */
