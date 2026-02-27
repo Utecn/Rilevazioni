@@ -1402,7 +1402,7 @@ function populateContractSelects(){
     el.innerHTML = (allowNone ? '<option value="">— nessuno —</option>' : '<option value="">'+empty+'</option>') +
       arr.map(x=>'<option value="'+x.id+'">'+esc(labelFn(x))+'</option>').join('');
   };
-  fill('cCliente',    contractLookups.clienti,              x=>(x.alias?x.alias+' – ':'')+x.name);
+  fill('cCliente',    contractLookups.clienti,              x=>(x.alias||x.name));
   fill('cMagazzino',  contractLookups.magazzini,            x=>x.nome+(x.citta?' · '+x.citta:''));
   fill('cMarchio',    contractLookups.marchi,               x=>x.name, '— nessuno —', true);
   fill('cBusiness',   contractLookups.business_types,       x=>x.name);
