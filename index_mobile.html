@@ -1307,7 +1307,7 @@ function populateContractSelects(){
       arr.map(x=>'<option value="'+x.id+'">'+esc(labelFn(x))+'</option>').join('');
   };
   fill('cCliente',    contractLookups.clienti,              x=>(x.alias||x.name));
-  fill('cMagazzino',  contractLookups.magazzini,            x=>x.nome);
+  fill('cMagazzino',  contractLookups.magazzini,            x=>x.nome+(x.edificio?' · '+x.edificio:''));
   fill('cMarchio',    contractLookups.marchi,               x=>x.name, '— nessuno —', true);
   fill('cBusiness',   contractLookups.business_types,       x=>x.name);
   fill('cSettore',    contractLookups.settori,              x=>x.name);
@@ -1421,7 +1421,7 @@ async function saveMagazzino(){
     if(error) throw error;
     contractLookups.magazzini.push(data);
     const sel = document.getElementById('cMagazzino');
-    const opt = document.createElement('option'); opt.value=data.id; opt.textContent=data.nome;
+    const opt = document.createElement('option'); opt.value=data.id; opt.textContent=data.nome+(data.edificio?' · '+data.edificio:'');
     sel.appendChild(opt); sel.value=data.id;
     ['mag_citta','mag_edificio','mag_via','mag_civico','mag_cap','mag_provincia'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
     cancelAnaInline('cMagazzino'); updateContractPreview();
