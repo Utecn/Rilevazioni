@@ -377,7 +377,28 @@ body.sort-mode .sort-handle{display:block;}
 /* Indicatore processo attivo nell'header */
 .proc-indicator{font-size:9px;font-family:'Share Tech Mono',monospace;color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
 
-/* ── TOAST ── */
+/* ── BACKUP PANEL ── */
+.backup-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+.backup-tab-btn{flex:1;padding:9px 6px;background:var(--card2);border:1px solid var(--border2);border-radius:6px;color:var(--dim);font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;cursor:pointer;text-align:center;letter-spacing:.5px;white-space:nowrap;}
+.backup-tab-btn:active{opacity:.7;}
+.backup-tab-btn.active{border-color:var(--orange);color:var(--orange);}
+.backup-row{display:flex;align-items:flex-start;gap:10px;background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:11px 12px;margin-bottom:7px;}
+.backup-row.deleted{border-color:rgba(255,51,85,.4);background:rgba(255,51,85,.04);}
+.backup-row.updated{border-color:rgba(0,229,255,.25);background:rgba(0,229,255,.03);}
+.backup-row-info{flex:1;min-width:0;}
+.backup-row-name{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.backup-row-meta{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;line-height:1.6;}
+.backup-action-badge{font-size:9px;font-weight:700;letter-spacing:1px;font-family:'Share Tech Mono',monospace;padding:3px 7px;border-radius:4px;flex-shrink:0;align-self:flex-start;}
+.badge-DELETE{background:rgba(255,51,85,.2);color:var(--red);border:1px solid var(--red);}
+.badge-UPDATE{background:rgba(0,229,255,.1);color:var(--cyan);border:1px solid var(--cyan);}
+.badge-INSERT{background:rgba(0,255,136,.1);color:var(--green);border:1px solid var(--green);}
+.restore-btn{flex-shrink:0;padding:7px 11px;background:transparent;border:1px solid var(--orange);color:var(--orange);border-radius:6px;font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;}
+.restore-btn:active{opacity:.7;}
+.backup-empty{padding:40px 20px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);line-height:2;}
+.backup-filter-row{display:flex;gap:8px;margin-bottom:12px;align-items:center;}
+.backup-filter-select{flex:1;padding:8px 10px;background:var(--card2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;outline:none;}
+
+
 .toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--card2);border:1px solid var(--border2);color:var(--text);padding:9px 18px;border-radius:30px;font-family:'Share Tech Mono',monospace;font-size:12px;white-space:nowrap;opacity:0;pointer-events:none;z-index:3000;transition:opacity .2s,transform .2s;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
@@ -487,6 +508,7 @@ body.sort-mode .sort-handle{display:block;}
     <div class="admin-tab active" onclick="switchAdminTab('users')">👥 UTENTI</div>
     <div class="admin-tab" onclick="switchAdminTab('projects')">📁 PROGETTI</div>
     <div class="admin-tab" onclick="switchAdminTab('anagrafiche')">🗂 ANAGR.</div>
+    <div class="admin-tab" onclick="switchAdminTab('backup')">🗄 BACKUP</div>
   </div>
   <div class="admin-body">
     <div class="admin-section active" id="adminUsers">
@@ -518,6 +540,9 @@ body.sort-mode .sort-handle{display:block;}
     </div>
     <div class="admin-section" id="adminAnagrafiche">
       <div id="anagraficheList"></div>
+    </div>
+    <div class="admin-section" id="adminBackup">
+      <div id="backupBody"></div>
     </div>
   </div>
 </div>
@@ -2557,12 +2582,14 @@ async function doExport(){
 function openAdminPanel(){ loadAdminData(); document.getElementById('adminScreen').classList.add('show'); }
 function closeAdminPanel(){ document.getElementById('adminScreen').classList.remove('show'); }
 function switchAdminTab(tab){
-  const tabs=['users','projects','anagrafiche'];
+  const tabs=['users','projects','anagrafiche','backup'];
   document.querySelectorAll('.admin-tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===tab));
   document.getElementById('adminUsers').classList.toggle('active',tab==='users');
   document.getElementById('adminProjects').classList.toggle('active',tab==='projects');
   document.getElementById('adminAnagrafiche').classList.toggle('active',tab==='anagrafiche');
+  document.getElementById('adminBackup').classList.toggle('active',tab==='backup');
   if(tab==='anagrafiche') loadAnagraficheAdmin();
+  if(tab==='backup') loadBackupPanel();
 }
 async function loadAdminData(){ await Promise.all([loadUserList(),loadProjectAdminList(),loadContractSelect()]); }
 
@@ -3140,7 +3167,118 @@ function showLoading(txt=''){
 }
 function hideLoading(){ document.getElementById('loadingScreen').classList.add('hidden'); }
 
-document.addEventListener('contextmenu',e=>e.preventDefault());
+
+/* ── BACKUP PANEL ── */
+let _backupType = 'contracts'; // 'contracts' | 'projects' | 'log_entries'
+
+async function loadBackupPanel(){
+  const body = document.getElementById('backupBody');
+  body.innerHTML = `
+    <div class="backup-tabs">
+      <div class="backup-tab-btn${_backupType==='contracts'?' active':''}" onclick="switchBackupType('contracts')">📋 APPALTI</div>
+      <div class="backup-tab-btn${_backupType==='projects'?' active':''}" onclick="switchBackupType('projects')">📁 PROGETTI</div>
+      <div class="backup-tab-btn${_backupType==='log_entries'?' active':''}" onclick="switchBackupType('log_entries')">⏱ RILEVAZIONI</div>
+    </div>
+    <div class="backup-filter-row">
+      <select class="backup-filter-select" id="backupActionFilter" onchange="renderBackupList()">
+        <option value="">Tutte le azioni</option>
+        <option value="DELETE">Solo eliminati</option>
+        <option value="UPDATE">Solo modificati</option>
+        <option value="INSERT">Solo creati</option>
+      </select>
+    </div>
+    <div id="backupList"><div class="backup-empty">CARICAMENTO...</div></div>
+  `;
+  await fetchAndRenderBackup();
+}
+
+function switchBackupType(type){
+  _backupType = type;
+  loadBackupPanel();
+}
+
+let _backupData = [];
+
+async function fetchAndRenderBackup(){
+  const listEl = document.getElementById('backupList');
+  try {
+    const table = _backupType + '_backup';
+    const { data, error } = await sb.from(table)
+      .select('*').order('backup_at', { ascending: false }).limit(200);
+    if(error) throw error;
+    _backupData = data || [];
+    renderBackupList();
+  } catch(e) {
+    if(document.getElementById('backupList'))
+      document.getElementById('backupList').innerHTML = '<div class="backup-empty">⚠ '+esc(e.message)+'</div>';
+  }
+}
+
+function renderBackupList(){
+  const listEl = document.getElementById('backupList');
+  if(!listEl) return;
+  const filter = document.getElementById('backupActionFilter')?.value || '';
+  const filtered = filter ? _backupData.filter(r => r.backup_action === filter) : _backupData;
+
+  if(!filtered.length){
+    listEl.innerHTML = '<div class="backup-empty">Nessun record nel backup.</div>';
+    return;
+  }
+
+  const rpcMap = { contracts_backup:'fn_restore_contract', projects_backup:'fn_restore_project', log_entries_backup:'fn_restore_log_entry' };
+
+  listEl.innerHTML = '';
+  filtered.forEach(r => {
+    const isDeleted = r.backup_action === 'DELETE';
+    const isUpdated = r.backup_action === 'UPDATE';
+    const label = r.name || r.card_name || r.id || '—';
+    const sub = r.backup_at ? new Date(r.backup_at).toLocaleString('it-IT') : '—';
+    const who = r.backup_by || 'sistema';
+
+    let detail = '';
+    if(_backupType === 'log_entries') {
+      detail = (r.card_name||'—') + ' · ' + (r.user_name||'—') + ' · ' + (r.started_at ? new Date(r.started_at).toLocaleDateString('it-IT') : '—');
+    } else if(_backupType === 'projects') {
+      detail = 'ID: ' + (r.id||'').slice(0,8) + '… · contract: ' + (r.contract_id||'').slice(0,8) + '…';
+    } else {
+      detail = 'ID: ' + (r.id||'').slice(0,8) + '…';
+    }
+
+    const div = document.createElement('div');
+    div.className = 'backup-row' + (isDeleted?' deleted':isUpdated?' updated':'');
+    div.innerHTML =
+      '<div class="backup-row-info">' +
+        '<div class="backup-row-name">' + esc(label) + '</div>' +
+        '<div class="backup-row-meta">' + esc(sub) + '<br>' + esc(detail) + '</div>' +
+      '</div>' +
+      '<span class="backup-action-badge badge-' + r.backup_action + '">' + r.backup_action + '</span>' +
+      (isDeleted ? '<button class="restore-btn" data-bid="'+r.backup_id+'">↩ RIPRISTINA</button>' : '');
+
+    if(isDeleted){
+      div.querySelector('.restore-btn').addEventListener('click', async () => {
+        const bid = parseInt(div.querySelector('.restore-btn').dataset.bid);
+        await restoreBackup(_backupType, bid);
+      });
+    }
+    listEl.appendChild(div);
+  });
+}
+
+async function restoreBackup(type, backupId){
+  const rpcFn = { contracts:'fn_restore_contract', projects:'fn_restore_project', log_entries:'fn_restore_log_entry' }[type];
+  if(!rpcFn) return;
+  if(!confirm('Ripristinare questo record eliminato?')) return;
+  try {
+    const { data, error } = await sb.rpc(rpcFn, { p_backup_id: backupId });
+    if(error) throw error;
+    toast(data || '✓ Ripristinato');
+    await fetchAndRenderBackup();
+  } catch(e) {
+    toast('⚠ ' + e.message);
+  }
+}
+
+
 
 /* ── BOOT ── */
 function showLogin(){
