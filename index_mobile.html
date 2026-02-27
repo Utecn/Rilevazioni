@@ -2465,11 +2465,19 @@ function showLogin(){
 
 (async function boot(){
   showLoading('CONNESSIONE...');
-  // Timeout di sicurezza: se dopo 8 secondi non è successo nulla, mostra il login
-  const safetyTimer = setTimeout(()=>{ console.warn('Boot timeout'); showLogin(); }, 8000);
+
+  // Timeout globale: se dopo 10s non siamo usciti dal boot, mostra login
+  const safetyTimer = setTimeout(()=>{ console.warn('Boot timeout'); showLogin(); requestWakeLock(); }, 10000);
+
   try {
-    const { data: { session }, error } = await sb.auth.getSession();
+    // getSession con timeout 5s per evitare hang da LockManager (es. dopo admin panel)
+    const sessionResult = await Promise.race([
+      sb.auth.getSession(),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('getSession timeout')),5000))
+    ]);
+    const { data: { session }, error } = sessionResult;
     if(error) throw error;
+
     if(session){
       const {data:prof, error:pe}=await sb.from('profiles').select('name,role,active').eq('id',session.user.id).single();
       if(pe) throw pe;
@@ -2481,10 +2489,10 @@ function showLogin(){
         hideLoading(); afterLogin(); return;
       }
     }
-  } catch(e){ console.error('Boot error:', e); }
+  } catch(e){ console.error('Boot error:', e.message); }
+
   clearTimeout(safetyTimer);
   showLogin();
-  // Tenta wake lock anche prima del login
   requestWakeLock();
 })();
 </script>

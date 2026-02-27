@@ -383,14 +383,26 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Rajdha
 <div class="toast" id="toast"></div>
 
 <script>
-// Rileva da dove si arriva e imposta il link "torna all'app"
+// Rileva dispositivo e imposta target
+const _isMobile = window.innerWidth < 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+const _appTarget = _isMobile ? 'index_mobile.html' : 'index_desktop.html';
+
+// Funzione torna all'app: chiude connessioni Supabase prima di navigare
+async function goBackToApp(){
+  try {
+    await sb.removeAllChannels();
+    await sb.auth.stopAutoRefresh();
+  } catch(e){ /* ignora */ }
+  setTimeout(() => { window.location.href = _appTarget; }, 80);
+}
+
 (function setBackLink(){
-  const isMobile = window.innerWidth < 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-  const target = isMobile ? 'index_mobile.html' : 'index_desktop.html';
-  document.getElementById('backAppLink').href        = target;
-  document.getElementById('backAppLink').textContent = isMobile ? '← App Mobile' : '← App Desktop';
-  document.getElementById('backAppLinkMobile').href        = target;
-  document.getElementById('backAppLinkMobile').textContent = isMobile ? '← App' : '← Desktop';
+  const label     = _isMobile ? '← App Mobile' : '← App Desktop';
+  const labelMob  = _isMobile ? '← App' : '← Desktop';
+  const el  = document.getElementById('backAppLink');
+  const elm = document.getElementById('backAppLinkMobile');
+  el.href  = '#'; el.textContent  = label;  el.onclick = e=>{ e.preventDefault(); goBackToApp(); };
+  elm.href = '#'; elm.textContent = labelMob; elm.onclick = e=>{ e.preventDefault(); goBackToApp(); };
 })();
 
 const SUPABASE_URL  = 'https://bjirlbcnymwibtfjovce.supabase.co';
