@@ -2457,6 +2457,31 @@ async function doExport(){
   if(email){setTimeout(()=>{const s=encodeURIComponent('Rilevazioni — '+currentProject?.name);const b=encodeURIComponent('Ciao,\n\nallego "'+fname+'".\n\n(Allega il file scaricato)');window.location.href='mailto:'+encodeURIComponent(email)+'?subject='+s+'&body='+b;},600);}
 }
 
+/* ── SHEET HELPERS ── */
+function showSheet(id){ document.getElementById(id).classList.add('show'); }
+function closeSheet(id){
+  document.getElementById(id).classList.remove('show');
+  if(id==='qtyOverlay') document.getElementById('qtyInput')?.blur();
+}
+function closeAllSheets(){
+  ['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay']
+  .forEach(id=>document.getElementById(id).classList.remove('show'));
+}
+['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay']
+.forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',e=>{if(e.target.id===id)closeSheet(id);}); });
+
+/* ── TOAST / LOADING ── */
+let toastT=null;
+function toast(msg){
+  const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2400);
+}
+function showLoading(txt=''){
+  document.getElementById('loadingText').textContent=txt||'CARICAMENTO...';
+  document.getElementById('loadingScreen').classList.remove('hidden');
+}
+function hideLoading(){ document.getElementById('loadingScreen').classList.add('hidden'); }
+
 /* ── BOOT ── */
 function showLogin(){
   hideLoading();
