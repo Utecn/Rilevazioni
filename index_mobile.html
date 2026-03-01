@@ -2219,13 +2219,16 @@ function toggleAllUsers(){
 }
 
 async function openHistory(){
+  if(!currentProject){ toast('Seleziona prima un progetto'); return; }
   document.getElementById('histProjLabel').textContent=currentProject?.name||'';
   document.getElementById('clearBtn').style.display=(currentUser?.role==='admin'||currentUser?.role==='project_manager')?'':'none';
-  // Reset a "solo mie" ogni volta che si apre
-  showAllUsers = false;
+  // Default: mostra tutte le rilevazioni del progetto
+  showAllUsers = true;
   const btn = document.getElementById('btnAllUsers');
-  btn.textContent='👤 IO'; btn.style.borderColor='var(--orange)'; btn.style.color='var(--orange)';
-  await loadLog();
+  btn.textContent='👥 TUTTI'; btn.style.borderColor='var(--cyan)'; btn.style.color='var(--cyan)';
+  try {
+    await loadLog();
+  } catch(e) { toast('⚠ Errore caricamento storico: '+e.message); return; }
   const sel=document.getElementById('filterSelect');
   sel.innerHTML='<option value="">Tutti i tasti</option>';
   [...new Set(logEntries.map(r=>r.card_name))].sort().forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});
