@@ -2422,6 +2422,41 @@ async function confirmClear(){
   } catch(e){toast('Errore: '+e.message);}
 }
 
+/* ── RIASSEGNA ATTIVITÀ ── */
+function openRenameActivity(entryId, row){
+  const nameEl = row.querySelector('.rec-name');
+  document.getElementById('renameActFrom').textContent = nameEl?.textContent || '—';
+  const list = document.getElementById('renameActList');
+  list.innerHTML = '';
+  // Mostra tutti i tasti disponibili tranne quello attuale
+  const currentName = nameEl?.textContent || '';
+  cards.forEach(c => {
+    if(c.name === currentName) return;
+    const btn = document.createElement('div');
+    btn.className = 'sheet-opt';
+    btn.innerHTML = '<span class="sheet-opt-icon">🔀</span>' + esc(c.name);
+    btn.addEventListener('click', async () => {
+      try {
+        const { error } = await sb.from('log_entries')
+          .update({ card_id: c.id, card_name: c.name })
+          .eq('id', entryId);
+        if(error) throw error;
+        // Aggiorna dato locale
+        const entry = logEntries.find(e => e.id === entryId);
+        if(entry){ entry.card_id = c.id; entry.card_name = c.name; }
+        closeSheet('renameActivityOverlay');
+        renderHistory();
+        toast('✓ Riassegnato a "' + c.name + '"');
+      } catch(e) { toast('⚠ ' + e.message); }
+    });
+    list.appendChild(btn);
+  });
+  if(!list.children.length){
+    list.innerHTML = '<div style="color:var(--dim);font-family:Share Tech Mono,monospace;font-size:11px;padding:10px;">Nessun altro tasto disponibile</div>';
+  }
+  showSheet('renameActivityOverlay');
+}
+
 /* ── EXPORT EXCEL ── */
 function openExport(){ document.getElementById('emailInput').value=''; showSheet('exportOverlay'); setTimeout(()=>document.getElementById('emailInput').focus(),120); }
 async function doExport(){
