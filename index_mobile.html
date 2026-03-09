@@ -527,6 +527,19 @@ body.sort-mode .sort-handle{display:block;}
   <button class="sheet-cancel" onclick="closeSheet('renameProjOverlay')">Annulla</button>
 </div></div>
 
+<div class="overlay" id="editProjOverlay"><div class="sheet">
+  <div class="sheet-title">MODIFICA PROGETTO</div>
+  <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">NOME PROGETTO</div>
+  <input class="text-input" id="editProjName" type="text" maxlength="40" placeholder="Nome progetto...">
+  <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;margin-top:4px;">REPARTO</div>
+  <select class="text-input" id="editProjReparto" style="padding:10px 12px;font-size:14px;margin-bottom:12px;"></select>
+  <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">RESPONSABILE</div>
+  <select class="text-input" id="editProjResponsible" style="padding:10px 12px;font-size:14px;margin-bottom:14px;"></select>
+  <button class="confirm-btn" onclick="doEditProj()" style="background:var(--purple);">SALVA MODIFICHE</button>
+  <div class="sheet-opt danger" onclick="doDeleteProjFromEdit()" style="margin-top:4px;"><span class="sheet-opt-icon">🗑</span> Elimina progetto</div>
+  <button class="sheet-cancel" onclick="closeSheet('editProjOverlay')">Annulla</button>
+</div></div>
+
 <div class="overlay" id="exportOverlay"><div class="sheet">
   <div class="sheet-title">ESPORTA IN EXCEL</div>
   <input class="email-input" id="emailInput" type="email" placeholder="tua@email.com (opzionale)">
@@ -1019,10 +1032,11 @@ function buildProjRow(p){
     teamBtn.addEventListener('click', ()=>openMembersScreen(p));
     wrap.appendChild(teamBtn);
 
-    const delBtn = document.createElement('div'); delBtn.className='proj-item-del';
-    delBtn.textContent='✕';
-    delBtn.addEventListener('click', ()=>deleteProjConfirm(p.id,p.name));
-    wrap.appendChild(delBtn);
+    const editBtn = document.createElement('div'); editBtn.className='proj-item-del';
+    editBtn.style.cssText='border-color:var(--purple);color:var(--purple);font-size:15px;';
+    editBtn.textContent='✏️';
+    editBtn.addEventListener('click', ()=>openEditProjSheet(p));
+    wrap.appendChild(editBtn);
   }
 
   return wrap;
@@ -2191,6 +2205,72 @@ async function doRenameProj(){
   }
 }
 document.getElementById('renameProjInput').addEventListener('keydown',e=>{if(e.key==='Enter')doRenameProj();});
+/* ── MODIFICA PROGETTO (solo responsabile) ── */
+let _editProjData = null;
+
+async function openEditProjSheet(p){
+  _editProjData = p;
+  document.getElementById('editProjName').value = p.name;
+
+  // Popola reparti
+  const repartoSel = document.getElementById('editProjReparto');
+  repartoSel.innerHTML = '<option value="">— nessuno —</option>';
+  if(currentContract?.magazzino_id){
+    const {data:reparti} = await sb.from('reparti').select('id,name').eq('magazzino_id',currentContract.magazzino_id).order('name');
+    (reparti||[]).forEach(r=>{
+      const o=document.createElement('option'); o.value=r.id; o.textContent=r.name;
+      if(r.id===p.reparto_id) o.selected=true;
+      repartoSel.appendChild(o);
+    });
+  }
+
+  // Popola responsabili
+  const respSel = document.getElementById('editProjResponsible');
+  respSel.innerHTML = '<option value="">— caricamento —</option>';
+  const {data:users} = await sb.from('profiles').select('id,name').eq('active',true).eq('hidden',false).order('name');
+  respSel.innerHTML = (users||[]).map(u=>
+    '<option value="'+u.id+'"'+(u.id===p.responsible_id?' selected':'')+'>'+esc(u.name)+'</option>'
+  ).join('');
+
+  showSheet('editProjOverlay');
+  setTimeout(()=>document.getElementById('editProjName').focus(), 120);
+}
+
+async function doEditProj(){
+  if(!_editProjData) return;
+  const name = document.getElementById('editProjName').value.trim();
+  if(!name){ document.getElementById('editProjName').focus(); return; }
+  const repartoId = document.getElementById('editProjReparto').value || null;
+  const responsibleId = document.getElementById('editProjResponsible').value || null;
+  try {
+    const {error} = await sb.from('projects').update({name, reparto_id:repartoId, responsible_id:responsibleId}).eq('id',_editProjData.id);
+    if(error) throw error;
+    if(currentProject?.id===_editProjData.id){
+      currentProject.name=name;
+      document.getElementById('projSelectorName').textContent=name;
+    }
+    closeSheet('editProjOverlay');
+    if(currentContract) await selectContract(currentContract); else await loadContracts();
+    toast('✓ Progetto aggiornato');
+  } catch(e){
+    const inp=document.getElementById('editProjName'); inp.style.borderColor='var(--red)';
+    toast('⚠ '+e.message); setTimeout(()=>inp.style.borderColor='',2000);
+  }
+}
+
+async function doDeleteProjFromEdit(){
+  if(!_editProjData) return;
+  const {id, name} = _editProjData;
+  if(!confirm('Eliminare il progetto "'+name+'" e tutti i dati?')) return;
+  closeSheet('editProjOverlay');
+  try {
+    const {error}=await sb.from('projects').delete().eq('id',id); if(error)throw error;
+    if(currentProject?.id===id){currentProject=null;stopAllTimers();cards=[];logEntries=[];renderAll();document.getElementById('projSelectorName').textContent='—';document.getElementById('splash').classList.remove('hidden');}
+    if(currentContract) await selectContract(currentContract); else await loadContracts();
+    toast('Progetto eliminato');
+  } catch(e){toast('Errore: '+e.message);}
+}
+
 async function deleteProjConfirm(id,name){
   if(!confirm('Eliminare il progetto "'+name+'" e tutti i dati?'))return;
   try {
@@ -2502,10 +2582,10 @@ function closeSheet(id){
   if(id==='qtyOverlay') document.getElementById('qtyInput')?.blur();
 }
 function closeAllSheets(){
-  ['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay']
+  ['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','editProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay']
   .forEach(id=>document.getElementById(id).classList.remove('show'));
 }
-['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay']
+['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','editProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay']
 .forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',e=>{if(e.target.id===id)closeSheet(id);}); });
 
 /* ── TOAST / LOADING ── */
