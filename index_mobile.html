@@ -828,7 +828,7 @@ async function loadContracts(){
   showLoading('CARICAMENTO...');
   try {
     const { data:contracts, error } = await sb.from('contracts')
-      .select('id,name,created_at').order('name');
+      .select('id,name,created_at,magazzino_id').order('name');
     if(error) throw error;
     const counts = await Promise.all(contracts.map(c =>
       sb.from('projects').select('id',{count:'exact',head:true}).eq('contract_id',c.id)
