@@ -1728,12 +1728,19 @@ async function loadCards(){
 }
 
 async function loadLog(){
-  const { data, error } = await sb.from('log_entries')
+  // Prima prova con il join sessioni; se fallisce (tabella non ancora creata) ricade su select semplice
+  let data, error;
+  ({ data, error } = await sb.from('log_entries')
     .select('*, sessions(name)')
-    .eq('project_id',currentProject.id)
-    .order('started_at',{ascending:false}).limit(1000);
-  if(error) throw error;
-  // Normalizza: aggiunge session_name come campo flat
+    .eq('project_id', currentProject.id)
+    .order('started_at', {ascending:false}).limit(1000));
+  if(error){
+    ({ data, error } = await sb.from('log_entries')
+      .select('*')
+      .eq('project_id', currentProject.id)
+      .order('started_at', {ascending:false}).limit(1000));
+    if(error) throw error;
+  }
   logEntries = (data||[]).map(r=>({...r, session_name: r.sessions?.name||null}));
   updateFooter();
 }
@@ -2570,6 +2577,7 @@ function attachSwipeDelete(wrap, row, delBg, entry){
 
   delBg.querySelector('span').addEventListener('click', async e=>{
     e.stopPropagation();
+    if(!entryId){ toast('⚠ ID rilevazione non valido'); return; }
     try{
       const {error}=await sb.from('log_entries').delete().eq('id',entryId);
       if(error) throw error;
