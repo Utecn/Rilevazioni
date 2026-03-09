@@ -110,6 +110,8 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 .hbtn.add{background:var(--orange);border-color:var(--orange);color:#fff;}
 .hbtn.hist{border-color:var(--green);color:var(--green);}
 .hbtn.home{border-color:var(--border2);color:var(--dim);font-size:16px;padding:5px 9px;}
+.hbtn.multi-on{border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,.08);}
+.hbtn.multi-off{border-color:var(--border2);color:var(--dim);}
 
 /* ── SORT BANNER ── */
 .sort-banner{display:none;flex-shrink:0;background:rgba(0,229,255,.05);border-bottom:1px solid var(--cyan);padding:7px 14px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--cyan);letter-spacing:1px;text-align:center;}
@@ -391,6 +393,7 @@ body.sort-mode .sort-handle{display:block;}
     <span class="proj-selector-arrow">▾</span>
   </div>
   <button class="hbtn hist" onclick="openHistory()">📋</button>
+  <button class="hbtn multi-off" id="btnMulti" onclick="toggleMultiMode()" title="Modalità multi/singolo">⊕</button>
   <button class="hbtn" id="btnSort" onclick="toggleSort()">⠿</button>
   <button class="hbtn add" onclick="openAdd()">＋</button>
 </div>
@@ -1720,9 +1723,30 @@ document.addEventListener('touchend',function(e){
 });
 
 /* ── TOGGLE CRONOMETRO ── */
+let multiMode = false;
+
+function toggleMultiMode(){
+  multiMode = !multiMode;
+  const btn = document.getElementById('btnMulti');
+  if(multiMode){
+    btn.classList.replace('multi-off','multi-on');
+    btn.textContent='⊞';
+    toast('Modalità MULTI — più tasti contemporanei');
+  } else {
+    btn.classList.replace('multi-on','multi-off');
+    btn.textContent='⊕';
+    toast('Modalità SINGOLO — un tasto alla volta');
+  }
+}
+
 async function toggleCard(id){
   const c=cards.find(x=>x.id===id); if(!c)return; vib(20);
   if(!c.running){
+    // Modalità singola: ferma tutti gli altri tasti attivi prima di avviare
+    if(!multiMode){
+      const running = cards.filter(x=>x.running && x.id!==id);
+      for(const other of running){ await toggleCard(other.id); }
+    }
     c.running=true; c.startedAt=new Date().toISOString(); c.start=Date.now()-c.elapsed;
     const el=document.querySelector('.card[data-id="'+id+'"]');
     if(el){el.classList.add('on');el.querySelector('.card-btn').textContent='STOP';}
