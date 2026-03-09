@@ -1064,13 +1064,8 @@ async function openProcessScreen(){
 function closeProcessScreen(){
   document.getElementById('processScreen').classList.remove('show');
   document.getElementById('membersScreen').classList.remove('show');
-  if(currentProject && currentProcess){
-    // torna all'app senza reset
-  } else {
-    // torna alla lista progetti
-    if(currentContract) selectContract(currentContract);
-    else loadContracts();
-  }
+  if(currentContract) selectContract(currentContract);
+  else loadContracts();
 }
 
 async function loadProcesses(){
