@@ -382,7 +382,7 @@ body.sort-mode .sort-handle{display:block;}
 <!-- APP -->
 <div class="header">
   <!-- ⌂ TASTO HOME — torna alla selezione progetto -->
-  <button class="hbtn home" onclick="goHome()" title="Home">⌂</button>
+  <button class="hbtn home" onclick="openProcessScreen()" title="← Processi">←</button>
   <button class="hbtn" id="btnFs" onclick="toggleFullscreen()" title="Schermo intero" style="font-size:15px;padding:5px 9px;">⛶</button>
   <div class="proj-selector" onclick="openProjSheet()">
     <span class="proj-selector-icon">◈</span>
@@ -422,10 +422,11 @@ body.sort-mode .sort-handle{display:block;}
 <div class="process-screen" id="processScreen">
   <div class="proc-header">
     <button class="proc-back" onclick="closeProcessScreen()">← Indietro</button>
-    <div>
+    <div style="flex:1;min-width:0;">
       <div class="proc-title">SELEZIONA <span>PROCESSO</span></div>
       <div class="proc-proj" id="procProjLabel">—</div>
     </div>
+    <button class="proc-back" onclick="goHome()" style="border-color:var(--border2);color:var(--dim);">⌂</button>
   </div>
   <div class="proc-body" id="procBody"></div>
 </div>
