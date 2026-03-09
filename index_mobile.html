@@ -112,6 +112,15 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 .hbtn.home{border-color:var(--border2);color:var(--dim);font-size:16px;padding:5px 9px;}
 .hbtn.multi-on{border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,.08);}
 .hbtn.multi-off{border-color:var(--border2);color:var(--dim);}
+.proc-item-sess{flex-shrink:0;width:36px;align-self:stretch;display:flex;align-items:center;justify-content:center;background:rgba(0,229,255,.08);border:1px solid var(--cyan);border-radius:6px;color:var(--cyan);font-size:18px;font-weight:700;cursor:pointer;touch-action:manipulation;margin-left:4px;}
+.proc-item-sess:active{opacity:.6;}
+.session-item{display:flex;flex-direction:column;background:var(--card2);border:1px solid var(--border2);border-radius:8px;padding:13px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;}
+.session-item:active{opacity:.7;}
+.session-item:hover{border-color:var(--cyan);}
+.session-item-name{font-size:14px;font-weight:700;color:var(--text);}
+.session-item-meta{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;letter-spacing:.5px;}
+.session-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1px;background:rgba(0,229,255,.1);border:1px solid var(--cyan);color:var(--cyan);margin-bottom:2px;}
+.sess-indicator{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--cyan);letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
 /* ── SORT BANNER ── */
 .sort-banner{display:none;flex-shrink:0;background:rgba(0,229,255,.05);border-bottom:1px solid var(--cyan);padding:7px 14px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--cyan);letter-spacing:1px;text-align:center;}
@@ -389,6 +398,7 @@ body.sort-mode .sort-handle{display:block;}
     <div style="flex:1;min-width:0;overflow:hidden;">
       <div class="proj-selector-name" id="projSelectorName">—</div>
       <div class="proc-indicator" id="procIndicator" style="display:none;"></div>
+      <div class="sess-indicator" id="sessIndicator" style="display:none;"></div>
     </div>
     <span class="proj-selector-arrow">▾</span>
   </div>
@@ -542,6 +552,12 @@ body.sort-mode .sort-handle{display:block;}
   <button class="confirm-btn" onclick="doEditProj()" style="background:var(--purple);">SALVA MODIFICHE</button>
   <div class="sheet-opt danger" onclick="doDeleteProjFromEdit()" style="margin-top:4px;"><span class="sheet-opt-icon">🗑</span> Elimina progetto</div>
   <button class="sheet-cancel" onclick="closeSheet('editProjOverlay')">Annulla</button>
+</div></div>
+
+<div class="overlay" id="sessionOverlay"><div class="sheet">
+  <div class="sheet-title">SELEZIONA SESSIONE — <span id="sessionProcLabel" style="color:var(--cyan);"></span></div>
+  <div id="sessionList" style="max-height:55vh;overflow-y:auto;"></div>
+  <button class="sheet-cancel" style="margin-top:8px;" onclick="closeSheet('sessionOverlay')">Annulla</button>
 </div></div>
 
 <div class="overlay" id="exportOverlay"><div class="sheet">
@@ -745,6 +761,7 @@ let currentUser    = null;
 let currentProject = null;
 let currentContract = null;
 let currentProcess  = null;
+let currentSession  = null;
 let lookups = { azioni:[], unita:[], servomezzi:[], attrezzature:[], etichette:[] };
 let cards          = [];
 let logEntries     = [];
@@ -1098,6 +1115,123 @@ async function loadLookups(){
   lookups.etichette    = e.data||[];
 }
 
+/* ══════════════════════════════════════
+   SESSIONI
+══════════════════════════════════════ */
+
+async function generateSessionName(processId){
+  const now = new Date();
+  const base = currentUser.name + ' ' + p2(now.getDate())+'/'+p2(now.getMonth()+1)+'/'+now.getFullYear();
+  const { data } = await sb.from('sessions').select('name').eq('process_id', processId).ilike('name', base + '%');
+  if(!data || data.length === 0) return base;
+  // Conta quelle con lo stesso base (inclusa senza suffisso)
+  let max = 1;
+  data.forEach(s => {
+    const m = s.name.match(/#(\d+)$/);
+    if(m) max = Math.max(max, parseInt(m[1]) + 1);
+    else  max = Math.max(max, 2);
+  });
+  return base + ' #' + String(max).padStart(3, '0');
+}
+
+async function createAndEnterSession(proc, label){
+  try {
+    showLoading('NUOVA SESSIONE...');
+    const name = await generateSessionName(proc.id);
+    const { data, error } = await sb.from('sessions').insert({
+      process_id: proc.id,
+      project_id: currentProject.id,
+      created_by: currentUser.id,
+      name
+    }).select().single();
+    if(error) throw error;
+    hideLoading();
+    await enterSession(data, proc, label);
+  } catch(e) { hideLoading(); toast('⚠ ' + e.message); }
+}
+
+async function enterSession(session, proc, label){
+  currentSession = session;
+  currentProcess = { ...proc, label };
+  document.getElementById('procIndicator').textContent = label;
+  document.getElementById('procIndicator').style.display = 'block';
+  document.getElementById('sessIndicator').textContent = '⊡ ' + session.name;
+  document.getElementById('sessIndicator').style.display = 'block';
+  document.getElementById('processScreen').classList.remove('show');
+  document.getElementById('membersScreen').classList.remove('show');
+  closeSheet('sessionOverlay');
+  // Stop timers precedenti
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  cards.forEach(c=>{c.running=false;c.start=null;c.elapsed=0;});
+  showLoading('CARICAMENTO...');
+  try {
+    await loadCards();
+    if(cards.length === 0){
+      const {data:existing} = await sb.from('cards').select('id').eq('project_id', currentProject.id).limit(1);
+      if(!existing || existing.length === 0){
+        const defaults = ['01','02','03','04','05','06','07','08','09','10'];
+        const { error } = await sb.from('cards').insert(defaults.map((n,i)=>({project_id:currentProject.id,name:n,position:i})));
+        if(error) throw error;
+        await loadCards();
+      } else { await loadCards(); }
+    }
+    await loadLog();
+  } catch(e) { toast('Errore: ' + e.message); }
+  finally { hideLoading(); setTimeout(()=>{ renderAll(); startRealtimeSync(); }, 80); }
+}
+
+async function openSessionPicker(proc, label){
+  try {
+    showLoading('CARICAMENTO SESSIONI...');
+    const { data: sessions, error } = await sb.from('sessions')
+      .select('id,name,created_by,created_at')
+      .eq('process_id', proc.id)
+      .order('created_at', { ascending: false });
+    if(error) throw error;
+    hideLoading();
+
+    if(!sessions || sessions.length === 0){
+      // Nessuna sessione: creane una nuova direttamente
+      await createAndEnterSession(proc, label);
+      return;
+    }
+    if(sessions.length === 1){
+      // Una sola sessione: entra direttamente
+      await enterSession(sessions[0], proc, label);
+      return;
+    }
+
+    // Più sessioni: mostra il picker
+    document.getElementById('sessionProcLabel').textContent = label;
+    const list = document.getElementById('sessionList');
+    list.innerHTML = '';
+
+    // Bottone "Nuova sessione" in cima
+    const newBtn = document.createElement('div');
+    newBtn.className = 'sheet-opt';
+    newBtn.innerHTML = '<span class="sheet-opt-icon">＋</span> Nuova sessione';
+    newBtn.style.borderColor = 'var(--cyan)'; newBtn.style.color = 'var(--cyan)';
+    newBtn.addEventListener('click', async () => { closeSheet('sessionOverlay'); await createAndEnterSession(proc, label); });
+    list.appendChild(newBtn);
+
+    const divider = document.createElement('div');
+    divider.style.cssText = 'font-size:9px;color:var(--dim);font-family:Share Tech Mono,monospace;letter-spacing:2px;text-transform:uppercase;padding:10px 4px 6px;';
+    divider.textContent = 'SESSIONI ESISTENTI';
+    list.appendChild(divider);
+
+    sessions.forEach(s => {
+      const item = document.createElement('div'); item.className = 'session-item';
+      item.innerHTML =
+        '<div class="session-item-name">' + esc(s.name) + '</div>'+
+        '<div class="session-item-meta">creata il ' + dateStr(s.created_at) + ' · ' + timeStr(s.created_at) + '</div>';
+      item.addEventListener('click', async () => { await enterSession(s, proc, label); });
+      list.appendChild(item);
+    });
+
+    showSheet('sessionOverlay');
+  } catch(e) { hideLoading(); toast('⚠ ' + e.message); }
+}
+
 function renderProcesses(procs){
   const body=document.getElementById('procBody'); body.innerHTML='';
 
@@ -1125,11 +1259,16 @@ function renderProcesses(procs){
           '<div class="proc-item-name">'+esc(label)+'</div>'+
           (etLabel?'<div class="proc-item-detail">'+esc(etLabel)+'</div>':'')+
         '</div>'+
+        '<div class="proc-item-sess" title="Nuova sessione">＋</div>'+
         '<div class="proc-item-del">✕</div>';
-      item.querySelector('.proc-item-body').addEventListener('click',()=>selectProcess(p,label));
+      item.querySelector('.proc-item-body').addEventListener('click',()=>openSessionPicker(p,label));
+      item.querySelector('.proc-item-sess').addEventListener('click',async e=>{
+        e.stopPropagation();
+        await createAndEnterSession(p,label);
+      });
       item.querySelector('.proc-item-del').addEventListener('click',async e=>{
         e.stopPropagation();
-        if(!confirm('Eliminare questo processo?'))return;
+        if(!confirm('Eliminare questo processo e tutte le sue sessioni?'))return;
         await sb.from('processes').delete().eq('id',p.id);
         await loadProcesses();
         toast('Processo eliminato');
@@ -1256,36 +1395,7 @@ document.addEventListener('keydown', e=>{
 });
 
 async function selectProcess(proc, label){
-  // Ferma qualsiasi timer precedente prima di tutto
-  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
-  cards.forEach(c=>{c.running=false;c.start=null;c.elapsed=0;});
-  currentProcess={...proc, label};
-  document.getElementById('procIndicator').textContent=label;
-  document.getElementById('procIndicator').style.display='block';
-  document.getElementById('processScreen').classList.remove('show');
-  document.getElementById('membersScreen').classList.remove('show');
-  showLoading('CARICAMENTO...');
-  try{
-    await loadCards();
-    // Se non ci sono tasti, crea i 10 default (una volta sola)
-    if(cards.length===0){
-      // Ricontrolla dal DB per evitare race condition
-      const {data:existing}=await sb.from('cards').select('id').eq('project_id',currentProject.id).limit(1);
-      if(!existing||existing.length===0){
-        const defaults=['01','02','03','04','05','06','07','08','09','10'];
-        const {error}=await sb.from('cards').insert(
-          defaults.map((n,i)=>({project_id:currentProject.id,name:n,position:i}))
-        );
-        if(error) throw error;
-        await loadCards();
-      } else {
-        await loadCards(); // altri li hanno già creati
-      }
-    }
-    await loadLog();
-  }
-  catch(e){ toast('Errore: '+e.message); }
-  finally{ hideLoading(); setTimeout(()=>{ renderAll(); startRealtimeSync(); },80); }
+  await openSessionPicker(proc, label);
 }
 
 /* ── ANAGRAFICHE LOOKUP ── */
@@ -1619,10 +1729,12 @@ async function loadCards(){
 
 async function loadLog(){
   const { data, error } = await sb.from('log_entries')
-    .select('*').eq('project_id',currentProject.id)
+    .select('*, sessions(name)')
+    .eq('project_id',currentProject.id)
     .order('started_at',{ascending:false}).limit(1000);
   if(error) throw error;
-  logEntries = data;
+  // Normalizza: aggiunge session_name come campo flat
+  logEntries = (data||[]).map(r=>({...r, session_name: r.sessions?.name||null}));
   updateFooter();
 }
 
@@ -1762,7 +1874,8 @@ async function toggleCard(id){
         project_id:currentProject.id, card_id:c.id, card_name:c.name,
         user_id:currentUser.id, user_name:currentUser.name,
         started_at:c.startedAt, ended_at:endTime.toISOString(), duration_ms:dur,
-        process_id:currentProcess?.id||null, quantity:savedQty
+        process_id:currentProcess?.id||null, quantity:savedQty,
+        session_id:currentSession?.id||null
       };
       let res = await sb.from('log_entries').insert(payload).select().single();
       // Se fallisce per la colonna quantity inesistente, riprova senza
@@ -2022,10 +2135,12 @@ function goHome(){
   currentProject=null;
   currentContract=null;
   currentProcess=null;
+  currentSession=null;
   cards=[]; logEntries=[];
   renderAll();
   document.getElementById('projSelectorName').textContent='—';
   document.getElementById('procIndicator').style.display='none';
+  document.getElementById('sessIndicator').style.display='none';
   loadContracts();
 }
 
@@ -2562,10 +2677,10 @@ function openExport(){ document.getElementById('emailInput').value=''; showSheet
 async function doExport(){
   const filtered=getFilteredLog(); if(!filtered.length){toast('Nessuna rilevazione');return;}
   const sorted=[...filtered].sort((a,b)=>new Date(a.started_at)-new Date(b.started_at));
-  const wsData=[['N°','Progetto','Tasto','Operatore','Data','Ora Inizio','Ora Fine','Durata (mm:ss.ms)','Durata (sec,ms)','Durata (ms)','Qtà']];
+  const wsData=[['N°','Progetto','Sessione','Tasto','Operatore','Data','Ora Inizio','Ora Fine','Durata (mm:ss.ms)','Durata (sec,ms)','Durata (ms)','Qtà']];
   sorted.forEach((r,i)=>{
     const si=Math.floor(r.duration_ms/1000),ms=String(r.duration_ms%1000).padStart(3,'0');
-    wsData.push([i+1,currentProject?.name||'—',r.card_name,r.user_name||'—',dateStr(r.started_at),timeStr(r.started_at),timeStr(r.ended_at),fmt(r.duration_ms),si+','+ms,r.duration_ms,r.quantity||1]);
+    wsData.push([i+1,currentProject?.name||'—',r.session_name||r.session_id||'—',r.card_name,r.user_name||'—',dateStr(r.started_at),timeStr(r.started_at),timeStr(r.ended_at),fmt(r.duration_ms),si+','+ms,r.duration_ms,r.quantity||1]);
   });
   const names=[...new Set(sorted.map(r=>r.card_name))];
   const summData=[['Tasto','N° Rilevazioni','Qtà Totale','Durata Totale','Media','Min','Max']];
@@ -2576,7 +2691,7 @@ async function doExport(){
   });
   const wb=XLSX.utils.book_new();
   const ws1=XLSX.utils.aoa_to_sheet(wsData),ws2=XLSX.utils.aoa_to_sheet(summData);
-  ws1['!cols']=[{wch:4},{wch:18},{wch:18},{wch:18},{wch:12},{wch:12},{wch:12},{wch:18},{wch:12},{wch:12},{wch:6}];
+  ws1['!cols']=[{wch:4},{wch:18},{wch:28},{wch:18},{wch:18},{wch:12},{wch:12},{wch:12},{wch:18},{wch:12},{wch:12},{wch:6}];
   ws2['!cols']=[{wch:20},{wch:16},{wch:12},{wch:16},{wch:16},{wch:10},{wch:10}];
   XLSX.utils.book_append_sheet(wb,ws1,'Rilevazioni'); XLSX.utils.book_append_sheet(wb,ws2,'Riepilogo');
   const now=new Date();
@@ -2602,10 +2717,10 @@ function closeSheet(id){
   if(id==='qtyOverlay') document.getElementById('qtyInput')?.blur();
 }
 function closeAllSheets(){
-  ['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','editProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay']
+  ['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','editProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay','sessionOverlay']
   .forEach(id=>document.getElementById(id).classList.remove('show'));
 }
-['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','editProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay']
+['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','editProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay','sessionOverlay']
 .forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',e=>{if(e.target.id===id)closeSheet(id);}); });
 
 /* ── TOAST / LOADING ── */
