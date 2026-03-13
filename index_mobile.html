@@ -10,6 +10,7 @@
 <title>Rilevazioni</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -23,6 +24,11 @@ html,body{height:100%;overflow:hidden;}
 body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;display:flex;flex-direction:column;height:100dvh;overflow:hidden;}
 
 /* ── LOADING ── */
+/* ── OFFLINE BANNER ── */
+.offline-banner{position:fixed;top:0;left:0;right:0;z-index:10000;background:var(--orange);color:#fff;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;text-align:center;padding:6px 12px;transform:translateY(-100%);transition:transform .3s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.offline-banner.show{transform:translateY(0);}
+.offline-dot{width:7px;height:7px;border-radius:50%;background:#fff;flex-shrink:0;}
+
 .loading-screen{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
 .loading-screen.hidden{display:none;}
 .loader{width:36px;height:36px;border:3px solid var(--border2);border-top-color:var(--orange);border-radius:50%;animation:spin 0.8s linear infinite;}
@@ -344,6 +350,9 @@ body.sort-mode .sort-handle{display:block;}
 </style>
 </head>
 <body>
+
+<!-- OFFLINE BANNER -->
+<div class="offline-banner" id="offlineBanner"><div class="offline-dot"></div>MODALITÀ OFFLINE — le timbrature saranno sincronizzate al rientro in rete</div>
 
 <!-- LOADING -->
 <div class="loading-screen" id="loadingScreen">
@@ -1876,14 +1885,18 @@ async function toggleCard(id){
     }
     c.qty=1;
     toast('✓  '+fmtS(dur)+(savedQty>1?' ×'+savedQty:''));
-    try {
-      const payload = {
+    const payload = {
         project_id:currentProject.id, card_id:c.id, card_name:c.name,
         user_id:currentUser.id, user_name:currentUser.name,
         started_at:c.startedAt, ended_at:endTime.toISOString(), duration_ms:dur,
         process_id:currentProcess?.id||null, quantity:savedQty,
         session_id:currentSession?.id||null
       };
+    if(!navigator.onLine){
+      queueOffline(payload);
+      toast('📴 Salvato offline — verrà sincronizzato');
+    } else {
+    try {
       let res = await sb.from('log_entries').insert(payload).select().single();
       // Se fallisce per la colonna quantity inesistente, riprova senza
       if(res.error && res.error.message && res.error.message.includes('quantity')){
@@ -1893,7 +1906,11 @@ async function toggleCard(id){
       if(res.error) throw res.error;
       logEntries.unshift(res.data);
       await sb.from('cards').update({records:c.records}).eq('id',c.id);
-    } catch(e){ toast('⚠ Errore salvataggio: '+e.message); }
+    } catch(e){
+      if(!navigator.onLine){ queueOffline(payload); toast('📴 Salvato offline — verrà sincronizzato'); }
+      else { toast('⚠ Errore salvataggio: '+e.message); }
+    }
+    }
   }
   updateFooter();
 }
@@ -2742,6 +2759,49 @@ function showLoading(txt=''){
   document.getElementById('loadingScreen').classList.remove('hidden');
 }
 function hideLoading(){ document.getElementById('loadingScreen').classList.add('hidden'); }
+
+/* ── OFFLINE QUEUE ── */
+const QUEUE_KEY = 'rilevazioni_offline_queue';
+
+function queueOffline(payload){
+  try {
+    const q = JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');
+    q.push({payload, queuedAt: new Date().toISOString()});
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+  } catch(e){ console.warn('Queue offline fallita:', e); }
+}
+
+async function flushOfflineQueue(){
+  try {
+    const q = JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');
+    if(!q.length) return;
+    const failed = [];
+    for(const item of q){
+      try {
+        let res = await sb.from('log_entries').insert(item.payload).select().single();
+        if(res.error && res.error.message?.includes('quantity')){
+          const {quantity:_, ...noQty} = item.payload;
+          res = await sb.from('log_entries').insert(noQty).select().single();
+        }
+        if(res.error) throw res.error;
+        logEntries.unshift(res.data);
+      } catch(e){ failed.push(item); }
+    }
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(failed));
+    const synced = q.length - failed.length;
+    if(synced > 0){ toast('✓ '+synced+' timbratur'+(synced===1?'a sincronizzata':'e sincronizzate')); updateFooter(); }
+    if(failed.length > 0){ toast('⚠ '+failed.length+' timbrature non sincronizzate'); }
+  } catch(e){ console.warn('Flush queue fallita:', e); }
+}
+
+window.addEventListener('online', ()=>{
+  document.getElementById('offlineBanner')?.classList.remove('show');
+  if(currentUser) flushOfflineQueue();
+});
+window.addEventListener('offline', ()=>{
+  document.getElementById('offlineBanner')?.classList.add('show');
+});
+if(!navigator.onLine){ document.getElementById('offlineBanner')?.classList.add('show'); }
 
 /* ── BOOT ── */
 function showLogin(){
