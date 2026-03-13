@@ -22,3 +22,12 @@ Formato: `[vX] Data — Descrizione`
 - `index.html` — router mobile/desktop
 - `index_mobile.html` — app principale
 - `index_desktop.html` — placeholder desktop
+  
+## [v3] — 2026-03
+**Database**
+- Audit RLS completato su tutte le tabelle pubbliche
+- Tabelle operative: RLS attiva con policy complete
+- Tabelle lookup (business_types, clienti, contract_specialita,
+  magazzini, marchi, reparti, settori, specialita, temperature,
+  unita_movimentazione): RLS disabilitata per scelta — 
+  accessibili a tutti gli utenti autenticati in lettura e scrittura
