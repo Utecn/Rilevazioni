@@ -31,3 +31,7 @@ Formato: `[vX] Data — Descrizione`
   magazzini, marchi, reparti, settori, specialita, temperature,
   unita_movimentazione): RLS disabilitata per scelta — 
   accessibili a tutti gli utenti autenticati in lettura e scrittura
+
+  ## [v4] — 2026-03
+**Database**
+- Fix search_path su 12 funzioni pubbliche (security hardening)
