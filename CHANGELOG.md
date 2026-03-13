@@ -35,3 +35,10 @@ Formato: `[vX] Data — Descrizione`
   ## [v4] — 2026-03
 **Database**
 - Fix search_path su 12 funzioni pubbliche (security hardening)
+
+- ## [v5] — 2026-03
+**Database**
+- RLS abilitata sulle 10 tabelle lookup (business_types, clienti,
+  contract_specialita, magazzini, marchi, reparti, settori,
+  specialita, temperature, unita_movimentazione)
+- Accesso completo per utenti autenticati, nessun accesso anonimo
