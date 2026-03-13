@@ -1,0 +1,24 @@
+# Changelog — Rilevazioni
+
+Ogni modifica al database o all'app viene registrata qui.
+Formato: `[vX] Data — Descrizione`
+
+---
+
+## [v2] — 2026-03
+**Database**
+- Aggiunta tabella `schema_migrations` per tracciare le modifiche al DB
+- Aggiunte RLS policy in sola lettura sulla tabella
+
+## [v1] — stato iniziale
+**Database**
+- Tabelle presenti: `contracts`, `projects`, `processes`, `sessions`,
+  `log_entries`, `cards`, `profiles`, `reparti`, `magazzino`,
+  `azioni`, `unita`, `servomezzi`, `attrezzature`, `etichette`
+- RLS attive, trigger con SECURITY DEFINER su log_entries
+- Backup automatico log_entries tramite trigger `fn_backup_log_entry`
+
+**App**
+- `index.html` — router mobile/desktop
+- `index_mobile.html` — app principale
+- `index_desktop.html` — placeholder desktop
