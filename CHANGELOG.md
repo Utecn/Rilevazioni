@@ -42,3 +42,10 @@ Formato: `[vX] Data — Descrizione`
   contract_specialita, magazzini, marchi, reparti, settori,
   specialita, temperature, unita_movimentazione)
 - Accesso completo per utenti autenticati, nessun accesso anonimo
+
+- ## [v6] — 2026-03
+**App**
+- Aggiunto Service Worker (sw.js) per funzionamento offline
+- Banner arancione visibile quando non c'è connessione
+- Coda offline: le timbrature vengono salvate localmente e 
+  sincronizzate automaticamente al rientro in rete
