@@ -443,14 +443,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Rajdha
                 </div>
               </div>
 
-              <!-- SPECIALITÀ (multi) -->
+		<!-- SPECIALITÀ (multi) -->
               <div class="appalto-field">
                 <label class="appalto-label">SPECIALITÀ</label>
                 <div id="aSpecialitaChips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;"></div>
                 <div class="appalto-input-row">
-                  <select class="form-select" id="aSpecialita"></select>
-                  <button class="appalto-add-btn" onclick="addAppaltoSpecialita()">＋</button>
-                  <button class="appalto-add-btn" style="background:var(--card2);border-color:var(--border2);color:var(--dim);" onclick="toggleAppaltoInline('aSpecialita')">new</button>
+                  <select class="form-select" id="aSpecialita" onchange="addAppaltoSpecialita()"></select>
+                  <button class="appalto-add-btn" onclick="toggleAppaltoInline('aSpecialita')" title="Crea nuova specialità">＋</button>
                 </div>
                 <div id="aSpecialita_new" class="appalto-inline-form" style="display:none;">
                   <div style="display:flex;gap:6px;">
