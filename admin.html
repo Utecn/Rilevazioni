@@ -705,7 +705,7 @@ async function loadContractSelect(){
 function toggleHidden(){ _showHidden = !_showHidden; loadUserList(); }
 
 async function loadUserList(){
-  const { data: profiles } = await sb.from('profiles').select('id,name,email,role,active,hidden').order('name');
+  const { data: profiles } = await sb.rpc('get_profiles_admin');
   const list = document.getElementById('userList'); list.innerHTML = '';
   const hiddenCount = (profiles||[]).filter(u=>u.hidden && u.id!==currentUser.id).length;
   const btn = document.getElementById('toggleHiddenBtn');
