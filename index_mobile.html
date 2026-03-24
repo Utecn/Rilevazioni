@@ -7,6 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#060608">
+<link rel="manifest" href="./manifest.json">
 <title>Rilevazioni</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -23,17 +24,20 @@
 html,body{height:100%;overflow:hidden;}
 body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;display:flex;flex-direction:column;height:100dvh;overflow:hidden;}
 
-/* ── LOADING ── */
+/* ── LOADING / SPLASH ── */
 /* ── OFFLINE BANNER ── */
 .offline-banner{position:fixed;top:0;left:0;right:0;z-index:10000;background:var(--orange);color:#fff;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;text-align:center;padding:6px 12px;transform:translateY(-100%);transition:transform .3s;display:flex;align-items:center;justify-content:center;gap:8px;}
 .offline-banner.show{transform:translateY(0);}
 .offline-dot{width:7px;height:7px;border-radius:50%;background:#fff;flex-shrink:0;}
 
-.loading-screen{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
-.loading-screen.hidden{display:none;}
-.loader{width:36px;height:36px;border:3px solid var(--border2);border-top-color:var(--orange);border-radius:50%;animation:spin 0.8s linear infinite;}
+.loading-screen{position:fixed;inset:0;z-index:9999;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;overflow:hidden;transition:opacity .4s ease;}
+.loading-screen.hidden{opacity:0;pointer-events:none;}
+.loading-screen.gone{display:none;}
+.splash-bg{position:absolute;inset:0;background:url('./splash.jpg') center center / cover no-repeat;}
+.splash-footer{position:relative;z-index:2;width:100%;padding:0 0 52px;display:flex;flex-direction:column;align-items:center;gap:14px;}
+.loader{width:34px;height:34px;border:3px solid rgba(30,100,220,0.25);border-top-color:#1e64dc;border-radius:50%;animation:spin 0.85s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
-.loading-text{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--dim);letter-spacing:2px;}
+.loading-text{font-family:'Share Tech Mono',monospace;font-size:11px;color:rgba(30,60,180,0.55);letter-spacing:2px;}
 
 /* ── LOGIN ── */
 .login-screen{position:fixed;inset:0;z-index:800;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;}
@@ -354,10 +358,13 @@ body.sort-mode .sort-handle{display:block;}
 <!-- OFFLINE BANNER -->
 <div class="offline-banner" id="offlineBanner"><div class="offline-dot"></div>MODALITÀ OFFLINE — le timbrature saranno sincronizzate al rientro in rete</div>
 
-<!-- LOADING -->
+<!-- LOADING / SPLASH -->
 <div class="loading-screen" id="loadingScreen">
-  <div class="loader"></div>
-  <div class="loading-text" id="loadingText">CONNESSIONE...</div>
+  <div class="splash-bg"></div>
+  <div class="splash-footer">
+    <div class="loader"></div>
+    <div class="loading-text" id="loadingText">CONNESSIONE...</div>
+  </div>
 </div>
 
 <!-- LOGIN -->
@@ -864,9 +871,17 @@ async function loadContracts(){
       sb.from('projects').select('id',{count:'exact',head:true}).eq('contract_id',c.id)
     ));
     const enriched = contracts.map((c,i)=>({...c, proj_count: counts[i].count||0}));
+    dcSave('contracts', enriched);
     renderContracts(enriched);
     document.getElementById('splash').classList.remove('hidden');
-  } catch(e){ toast('Errore caricamento: '+e.message); }
+  } catch(e){
+    const cached = dcLoad('contracts');
+    if(cached){
+      renderContracts(cached);
+      document.getElementById('splash').classList.remove('hidden');
+      if(!navigator.onLine) toast('📴 Dati offline');
+    } else { toast('Errore caricamento: '+e.message); }
+  }
   finally { hideLoading(); }
 }
 
@@ -968,12 +983,23 @@ async function loadProjectsForContract(){
       isMember: memberProjIds.includes(p.id),
       isMine: myProjIds.has(p.id)
     }));
+    // Salva in cache
+    dcSave('projects_'+currentContract.id, enriched);
     // Passa anche il totale di tutti i progetti per mostrare il toggle solo se ha senso
     _allProjectsCount = allProjects.length;
     _myProjectsCount = myProjIds.size;
     renderProjects(enriched);
     document.getElementById('splash').classList.remove('hidden');
-  } catch(e){ toast('Errore: '+e.message); }
+  } catch(e){
+    const cached = dcLoad('projects_'+currentContract.id);
+    if(cached){
+      _allProjectsCount = cached.length;
+      _myProjectsCount = cached.filter(p=>p.isMine).length;
+      renderProjects(cached);
+      document.getElementById('splash').classList.remove('hidden');
+      if(!navigator.onLine) toast('📴 Progetti offline');
+    } else { toast('Errore: '+e.message); }
+  }
   finally { hideLoading(); }
 }
 
@@ -1104,9 +1130,56 @@ async function loadProcesses(){
       .select('id,azione_id,unita_id,servomezzo_id,attrezzatura_id,etichetta_id,azioni(name),unita(name),servomezzi(name),attrezzature(name),etichette(name)')
       .eq('project_id',currentProject.id).order('created_at');
     if(error)throw error;
-    renderProcesses(procs||[]);
-  }catch(e){toast('Errore: '+e.message);}
+    dcSave('processes_'+currentProject.id, procs||[]);
+    // Aggiungi processi in coda offline (non ancora sincronizzati)
+    const allProcs = [...(procs||[]), ...getOfflinePendingProcesses()];
+    renderProcesses(allProcs);
+  }catch(e){
+    // Offline fallback: usa cache
+    const cached = dcLoad('processes_'+currentProject.id);
+    if(cached !== null){
+      if(!lookups.azioni.length){
+        const cachedLookups = dcLoad('lookups');
+        if(cachedLookups){
+          lookups.azioni       = cachedLookups.azioni||[];
+          lookups.unita        = cachedLookups.unita||[];
+          lookups.servomezzi   = cachedLookups.servomezzi||[];
+          lookups.attrezzature = cachedLookups.attrezzature||[];
+          lookups.etichette    = cachedLookups.etichette||[];
+        }
+      }
+      const allProcs = [...cached, ...getOfflinePendingProcesses()];
+      renderProcesses(allProcs);
+      if(!navigator.onLine) toast('📴 Processi offline');
+    } else {
+      toast('Errore: '+e.message);
+    }
+  }
   finally{hideLoading();}
+}
+
+// Restituisce i processi in coda offline per il progetto corrente
+function getOfflinePendingProcesses(){
+  try{
+    const q = JSON.parse(localStorage.getItem(PROC_QUEUE_KEY)||'[]');
+    return q
+      .filter(item => item.payload.project_id === currentProject.id)
+      .map(item => ({
+        id: item.tempId,
+        _offline_pending: true,
+        project_id: item.payload.project_id,
+        azione_id: item.payload.azione_id,
+        unita_id: item.payload.unita_id,
+        servomezzo_id: item.payload.servomezzo_id,
+        attrezzatura_id: item.payload.attrezzatura_id,
+        etichetta_id: item.payload.etichetta_id,
+        azioni: {name: lookups.azioni.find(x=>x.id===item.payload.azione_id)?.name||'?'},
+        unita: {name: lookups.unita.find(x=>x.id===item.payload.unita_id)?.name||'?'},
+        servomezzi: {name: lookups.servomezzi.find(x=>x.id===item.payload.servomezzo_id)?.name||'?'},
+        attrezzature: {name: lookups.attrezzature.find(x=>x.id===item.payload.attrezzatura_id)?.name||'?'},
+        etichette: item.payload.etichetta_id ? {name: lookups.etichette.find(x=>x.id===item.payload.etichetta_id)?.name||'?'} : null,
+      }));
+  }catch(e){ return []; }
 }
 
 async function loadLookups(){
@@ -1122,6 +1195,8 @@ async function loadLookups(){
   lookups.servomezzi   = s.data||[];
   lookups.attrezzature = at.data||[];
   lookups.etichette    = e.data||[];
+  // Salva in cache per uso offline
+  dcSave('lookups', lookups);
 }
 
 /* ══════════════════════════════════════
@@ -1144,6 +1219,23 @@ async function generateSessionName(processId){
 }
 
 async function createAndEnterSession(proc, label){
+  // Se offline: crea una sessione temporanea locale
+  if(!navigator.onLine){
+    const tempId = 'tmp_sess_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    const now = new Date();
+    const sessionName = currentUser.name + ' ' + p2(now.getDate())+'/'+p2(now.getMonth()+1)+'/'+now.getFullYear()+' [offline]';
+    const tempSession = { id: tempId, name: sessionName, process_id: proc.id, project_id: currentProject.id, created_by: currentUser.id, _offline_pending: true };
+    // Metti in coda
+    queueOfflineSession({
+      process_id: String(proc.id).startsWith('tmp_') ? proc.id : proc.id,
+      project_id: currentProject.id,
+      created_by: currentUser.id,
+      name: sessionName
+    }, tempId);
+    toast('📴 Sessione offline — verrà sincronizzata');
+    await enterSession(tempSession, proc, label);
+    return;
+  }
   try {
     showLoading('NUOVA SESSIONE...');
     const name = await generateSessionName(proc.id);
@@ -1262,21 +1354,36 @@ function renderProcesses(procs){
     procs.forEach(p=>{
       const label=[p.azioni?.name,p.unita?.name,p.servomezzi?.name,p.attrezzature?.name].filter(Boolean).join(' · ');
       const etLabel=p.etichette?.name?'🏷 '+p.etichette.name:'';
+      const isOffline = !!p._offline_pending;
       const item=document.createElement('div'); item.className='proc-item';
       item.innerHTML=
         '<div class="proc-item-body">'+
-          '<div class="proc-item-name">'+esc(label)+'</div>'+
+          '<div class="proc-item-name">'+esc(label)+(isOffline?' <span style="font-size:10px;color:var(--orange);font-family:Share Tech Mono,monospace;">📴 IN ATTESA</span>':'')+
+          '</div>'+
           (etLabel?'<div class="proc-item-detail">'+esc(etLabel)+'</div>':'')+
         '</div>'+
-        '<div class="proc-item-sess" title="Nuova sessione">＋</div>'+
+        (!isOffline ? '<div class="proc-item-sess" title="Nuova sessione">＋</div>' : '')+
         '<div class="proc-item-del">✕</div>';
-      item.querySelector('.proc-item-body').addEventListener('click',()=>openSessionPicker(p,label));
-      item.querySelector('.proc-item-sess').addEventListener('click',async e=>{
-        e.stopPropagation();
-        await createAndEnterSession(p,label);
-      });
+      if(!isOffline){
+        item.querySelector('.proc-item-body').addEventListener('click',()=>openSessionPicker(p,label));
+        item.querySelector('.proc-item-sess').addEventListener('click',async e=>{
+          e.stopPropagation();
+          await createAndEnterSession(p,label);
+        });
+      } else {
+        // Processi offline: tap sul corpo mostra messaggio
+        item.querySelector('.proc-item-body').addEventListener('click',()=>toast('📴 Sincronizzazione in attesa di connessione'));
+      }
       item.querySelector('.proc-item-del').addEventListener('click',async e=>{
         e.stopPropagation();
+        if(isOffline){
+          if(!confirm('Eliminare questo processo (non ancora sincronizzato)?'))return;
+          // Rimuovi dalla coda
+          const q=JSON.parse(localStorage.getItem(PROC_QUEUE_KEY)||'[]');
+          localStorage.setItem(PROC_QUEUE_KEY, JSON.stringify(q.filter(x=>x.tempId!==p.id)));
+          await loadProcesses(); toast('Processo rimosso dalla coda');
+          return;
+        }
         if(!confirm('Eliminare questo processo e tutte le sue sessioni?'))return;
         await sb.from('processes').delete().eq('id',p.id);
         await loadProcesses();
@@ -1382,15 +1489,43 @@ async function doCreateProcess(){
   const at=document.getElementById('pAttrezzatura')?.value;
   const et=document.getElementById('pEtichetta')?.value||null;
   if(!a||!u||!s||!at){toast('Compila Azione, Unità, Servomezzo e Attrezzatura');return;}
+  const payload = {
+    project_id:currentProject.id, azione_id:a, unita_id:u,
+    servomezzo_id:s, attrezzatura_id:at, etichetta_id:et||null,
+    created_by:currentUser.id
+  };
+  if(!navigator.onLine){
+    const tempId = queueOfflineProcess(payload);
+    // Aggiungi subito alla lista come "in attesa"
+    const tempProc = {
+      id: tempId, _offline_pending: true, ...payload,
+      azioni:       {name: lookups.azioni.find(x=>x.id===a)?.name||'?'},
+      unita:        {name: lookups.unita.find(x=>x.id===u)?.name||'?'},
+      servomezzi:   {name: lookups.servomezzi.find(x=>x.id===s)?.name||'?'},
+      attrezzature: {name: lookups.attrezzature.find(x=>x.id===at)?.name||'?'},
+      etichette:    et ? {name: lookups.etichette.find(x=>x.id===et)?.name||'?'} : null,
+    };
+    // Aggiorna cache processi
+    const cKey = 'processes_'+currentProject.id;
+    const cachedProcs = dcLoad(cKey)||[];
+    dcSave(cKey, [...cachedProcs, tempProc]);
+    await loadProcesses();
+    toast('📴 Processo salvato offline — verrà sincronizzato');
+    return;
+  }
   try{
-    const {error}=await sb.from('processes').insert({
-      project_id:currentProject.id, azione_id:a, unita_id:u,
-      servomezzo_id:s, attrezzatura_id:at, etichetta_id:et||null,
-      created_by:currentUser.id
-    });
+    const {error}=await sb.from('processes').insert(payload);
     if(error)throw error;
     await loadProcesses(); toast('Processo creato');
-  }catch(e){toast('⚠ '+e.message);}
+  }catch(e){
+    if(!navigator.onLine){
+      const tempId = queueOfflineProcess(payload);
+      await loadProcesses();
+      toast('📴 Processo salvato offline — verrà sincronizzato');
+    } else {
+      toast('⚠ '+e.message);
+    }
+  }
 }
 
 // Enter key su input inline
@@ -1730,27 +1865,64 @@ function stopRealtimeSync(){
 
 
 async function loadCards(){
-  const { data, error } = await sb.from('cards')
-    .select('*').eq('project_id',currentProject.id).order('position');
-  if(error) throw error;
-  cards = data.map(c=>({...c,running:false,start:null,elapsed:0,qty:1}));
+  try {
+    const { data, error } = await sb.from('cards')
+      .select('*').eq('project_id',currentProject.id).order('position');
+    if(error) throw error;
+    cards = data.map(c=>({...c,running:false,start:null,elapsed:0,qty:1}));
+    dcSave('cards_'+currentProject.id, data);
+  } catch(e) {
+    // Offline fallback
+    const cached = dcLoad('cards_'+currentProject.id);
+    if(cached !== null){
+      cards = cached.map(c=>({...c,running:false,start:null,elapsed:0,qty:1}));
+      if(!navigator.onLine) toast('📴 Tasti offline');
+    } else { throw e; }
+  }
 }
 
 async function loadLog(){
   // Prima prova con il join sessioni; se fallisce (tabella non ancora creata) ricade su select semplice
   let data, error;
-  ({ data, error } = await sb.from('log_entries')
-    .select('*, sessions(name)')
-    .eq('project_id', currentProject.id)
-    .order('started_at', {ascending:false}).limit(1000));
-  if(error){
+  try {
     ({ data, error } = await sb.from('log_entries')
-      .select('*')
+      .select('*, sessions(name)')
       .eq('project_id', currentProject.id)
       .order('started_at', {ascending:false}).limit(1000));
-    if(error) throw error;
+    if(error){
+      ({ data, error } = await sb.from('log_entries')
+        .select('*')
+        .eq('project_id', currentProject.id)
+        .order('started_at', {ascending:false}).limit(1000));
+      if(error) throw error;
+    }
+    logEntries = (data||[]).map(r=>({...r, session_name: r.sessions?.name||null}));
+    dcSave('log_'+currentProject.id, logEntries);
+  } catch(e) {
+    // Offline fallback
+    const cached = dcLoad('log_'+currentProject.id);
+    if(cached !== null){
+      logEntries = cached;
+      if(!navigator.onLine) toast('📴 Storico offline');
+    } else {
+      logEntries = [];
+    }
   }
-  logEntries = (data||[]).map(r=>({...r, session_name: r.sessions?.name||null}));
+  // Aggiungi le rilevazioni in coda offline (non ancora sincronizzate)
+  const offlineQueue = JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');
+  const pendingEntries = offlineQueue
+    .filter(item => item.payload.project_id === currentProject.id)
+    .map(item => ({
+      ...item.payload,
+      id: '_offline_'+item.queuedAt,
+      _offline_pending: true,
+      sessions: null,
+      session_name: null,
+    }));
+  // Prepend pending entries (più recenti prima)
+  if(pendingEntries.length){
+    logEntries = [...pendingEntries.reverse(), ...logEntries];
+  }
   updateFooter();
 }
 
@@ -2618,10 +2790,16 @@ function renderHistory(){
   const body=document.getElementById('histBody'),filtered=getFilteredLog(),tot=filtered.length;
   document.getElementById('hsTot').textContent=tot;
   if(!tot){['hsMedia','hsMin','hsMax'].forEach(id=>document.getElementById(id).textContent='—');body.innerHTML='<div class="hist-empty">Nessuna rilevazione.</div>';return;}
-  const durs=filtered.map(r=>r.duration_ms);
-  document.getElementById('hsMedia').textContent=fmtS(durs.reduce((a,b)=>a+b,0)/tot);
-  document.getElementById('hsMin').textContent=fmtS(Math.min(...durs));
-  document.getElementById('hsMax').textContent=fmtS(Math.max(...durs));
+  // Calcola statistiche escludendo le pending (non hanno duration_ms reale)
+  const realEntries = filtered.filter(r=>!r._offline_pending);
+  const durs=realEntries.map(r=>r.duration_ms);
+  if(durs.length){
+    document.getElementById('hsMedia').textContent=fmtS(durs.reduce((a,b)=>a+b,0)/durs.length);
+    document.getElementById('hsMin').textContent=fmtS(Math.min(...durs));
+    document.getElementById('hsMax').textContent=fmtS(Math.max(...durs));
+  } else {
+    ['hsMedia','hsMin','hsMax'].forEach(id=>document.getElementById(id).textContent='—');
+  }
   const byDay={};
   filtered.forEach(r=>{const day=dateStr(r.started_at);if(!byDay[day])byDay[day]=[];byDay[day].push(r);});
   body.innerHTML='';
@@ -2630,18 +2808,23 @@ function renderHistory(){
     const lbl=document.createElement('div'); lbl.className='day-label';
     lbl.textContent=day+' — '+byDay[day].length+' rilevazioni'; grp.appendChild(lbl);
     byDay[day].forEach(r=>{
+      const isOffline = !!r._offline_pending;
       const wrap=document.createElement('div'); wrap.className='rec-wrap';
       const delBg=document.createElement('div'); delBg.className='rec-del-bg';
       delBg.innerHTML='<span>ELIMINA</span>';
       const row=document.createElement('div'); row.className='rec-row';
-      row.innerHTML='<div class="rec-name">'+esc(r.card_name)+'</div>'+
+      row.innerHTML='<div class="rec-name">'+esc(r.card_name)+
+        (isOffline?' <span style="font-size:9px;color:var(--orange);font-family:Share Tech Mono,monospace;">📴</span>':'')+
+        '</div>'+
         '<div class="rec-info"><div class="rec-time">'+timeStr(r.started_at)+' → '+timeStr(r.ended_at)+'</div>'+
         '<div class="rec-user">'+esc(r.user_name||'')+'</div></div>'+
         '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">'+
           '<div class="rec-dur">'+fmtS(r.duration_ms)+'</div>'+
           ((r.quantity&&r.quantity>1)?'<div class="rec-qty">×'+r.quantity+'</div>':'')+
         '</div>';
-      attachSwipeDelete(wrap, row, delBg, r);
+      if(!isOffline){
+        attachSwipeDelete(wrap, row, delBg, r);
+      }
       wrap.appendChild(delBg);
       wrap.appendChild(row);
       grp.appendChild(wrap);
@@ -2755,12 +2938,34 @@ function toast(msg){
   clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2400);
 }
 function showLoading(txt=''){
+  const el=document.getElementById('loadingScreen');
   document.getElementById('loadingText').textContent=txt||'CARICAMENTO...';
-  document.getElementById('loadingScreen').classList.remove('hidden');
+  el.classList.remove('hidden','gone');
 }
-function hideLoading(){ document.getElementById('loadingScreen').classList.add('hidden'); }
+function hideLoading(){
+  const el=document.getElementById('loadingScreen');
+  el.classList.add('hidden');
+  setTimeout(()=>el.classList.add('gone'), 450);
+}
 
-/* ── OFFLINE QUEUE ── */
+/* ══════════════════════════════════════
+   CACHE DATI LOCALE (offline support)
+══════════════════════════════════════ */
+const DCACHE_PFX = 'rlv_';
+
+function dcSave(key, data){
+  try{ localStorage.setItem(DCACHE_PFX+key, JSON.stringify({d:data,t:Date.now()})); }
+  catch(e){ console.warn('dcSave failed:',key,e); }
+}
+function dcLoad(key){
+  try{
+    const raw = localStorage.getItem(DCACHE_PFX+key);
+    if(!raw) return null;
+    return JSON.parse(raw)?.d ?? null;
+  }catch(e){ return null; }
+}
+
+/* ── OFFLINE QUEUE — Rilevazioni (log_entries) ── */
 const QUEUE_KEY = 'rilevazioni_offline_queue';
 
 function queueOffline(payload){
@@ -2771,16 +2976,103 @@ function queueOffline(payload){
   } catch(e){ console.warn('Queue offline fallita:', e); }
 }
 
+/* ── OFFLINE QUEUE — Processi ── */
+const PROC_QUEUE_KEY = 'rlv_proc_queue';
+
+function queueOfflineProcess(payload){
+  try {
+    const q = JSON.parse(localStorage.getItem(PROC_QUEUE_KEY)||'[]');
+    const tempId = 'tmp_proc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    q.push({payload, tempId, queuedAt: new Date().toISOString()});
+    localStorage.setItem(PROC_QUEUE_KEY, JSON.stringify(q));
+    return tempId;
+  } catch(e){ console.warn('Process queue failed:', e); return null; }
+}
+
+async function flushOfflineProcessQueue(){
+  try {
+    const q = JSON.parse(localStorage.getItem(PROC_QUEUE_KEY)||'[]');
+    if(!q.length) return {};
+    const failed = [];
+    const tempToReal = {};
+    for(const item of q){
+      try {
+        const {data, error} = await sb.from('processes').insert(item.payload).select().single();
+        if(error) throw error;
+        tempToReal[item.tempId] = data.id;
+        // Aggiorna cache processi del progetto
+        const cKey = 'processes_'+item.payload.project_id;
+        const cached = dcLoad(cKey)||[];
+        const withoutTemp = cached.filter(p=>p.id!==item.tempId);
+        withoutTemp.push(data);
+        dcSave(cKey, withoutTemp);
+      } catch(e){ failed.push(item); }
+    }
+    localStorage.setItem(PROC_QUEUE_KEY, JSON.stringify(failed));
+    const synced = q.length - failed.length;
+    if(synced > 0) toast('✓ '+synced+' process'+(synced===1?'o':'i')+' sincronizzat'+(synced===1?'o':'i'));
+    return tempToReal;
+  } catch(e){ console.warn('Flush process queue failed:', e); return {}; }
+}
+
+/* ── OFFLINE QUEUE — Sessioni ── */
+const SESS_QUEUE_KEY = 'rlv_sess_queue';
+
+function queueOfflineSession(payload, tempId){
+  try {
+    const q = JSON.parse(localStorage.getItem(SESS_QUEUE_KEY)||'[]');
+    q.push({payload, tempId, queuedAt: new Date().toISOString()});
+    localStorage.setItem(SESS_QUEUE_KEY, JSON.stringify(q));
+  } catch(e){ console.warn('Session queue failed:', e); }
+}
+
+async function flushOfflineSessionQueue(tempToRealProcess={}){
+  try {
+    const q = JSON.parse(localStorage.getItem(SESS_QUEUE_KEY)||'[]');
+    if(!q.length) return {};
+    const failed = [];
+    const tempToReal = {};
+    for(const item of q){
+      try {
+        const payload = {...item.payload};
+        // Risolvi temp process_id se è stato sincronizzato ora
+        if(payload.process_id && tempToRealProcess[payload.process_id])
+          payload.process_id = tempToRealProcess[payload.process_id];
+        // Non sincronizzare se il process_id è ancora temporaneo
+        if(String(payload.process_id).startsWith('tmp_')){ failed.push(item); continue; }
+        const {data, error} = await sb.from('sessions').insert(payload).select().single();
+        if(error) throw error;
+        tempToReal[item.tempId] = data.id;
+      } catch(e){ failed.push(item); }
+    }
+    localStorage.setItem(SESS_QUEUE_KEY, JSON.stringify(failed));
+    return tempToReal;
+  } catch(e){ console.warn('Flush session queue failed:', e); return {}; }
+}
+
+/* ── FLUSH COMPLETO — ordine: processi → sessioni → rilevazioni ── */
 async function flushOfflineQueue(){
+  // 1. Processi
+  const tempToRealProcess = await flushOfflineProcessQueue();
+  // 2. Sessioni
+  const tempToRealSession = await flushOfflineSessionQueue(tempToRealProcess);
+
+  // 3. Rilevazioni (log_entries)
   try {
     const q = JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');
     if(!q.length) return;
     const failed = [];
     for(const item of q){
       try {
-        let res = await sb.from('log_entries').insert(item.payload).select().single();
+        let payload = {...item.payload};
+        // Risolvi temp IDs
+        if(payload.process_id && tempToRealProcess[payload.process_id])
+          payload.process_id = tempToRealProcess[payload.process_id];
+        if(payload.session_id && tempToRealSession[payload.session_id])
+          payload.session_id = tempToRealSession[payload.session_id];
+        let res = await sb.from('log_entries').insert(payload).select().single();
         if(res.error && res.error.message?.includes('quantity')){
-          const {quantity:_, ...noQty} = item.payload;
+          const {quantity:_, ...noQty} = payload;
           res = await sb.from('log_entries').insert(noQty).select().single();
         }
         if(res.error) throw res.error;
@@ -2825,10 +3117,23 @@ function showLogin(){
     if(error) throw error;
 
     if(session){
-      const {data:prof, error:pe}=await sb.from('profiles').select('name,role,active').eq('id',session.user.id).single();
-      if(pe) throw pe;
+      let prof = null;
+      try {
+        const {data:profData, error:pe}=await sb.from('profiles').select('name,role,active').eq('id',session.user.id).single();
+        if(pe) throw pe;
+        prof = profData;
+        if(prof?.active){
+          // Salva profilo in cache per uso offline
+          dcSave('profile_'+session.user.id, {name:prof.name, role:prof.role, email:session.user.email});
+        }
+      } catch(netErr) {
+        // Se offline, usa il profilo in cache
+        const cached = dcLoad('profile_'+session.user.id);
+        if(cached){ prof = {...cached, active:true}; }
+        else { throw netErr; }
+      }
       if(prof?.active){
-        currentUser={id:session.user.id,email:session.user.email,name:prof.name,role:prof.role};
+        currentUser={id:session.user.id,email:session.user.email||prof.email,name:prof.name,role:prof.role};
         clearTimeout(safetyTimer);
         await requestWakeLock();
         await tryAutoFullscreen();
