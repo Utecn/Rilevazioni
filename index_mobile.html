@@ -875,12 +875,17 @@ async function loadContracts(){
     renderContracts(enriched);
     document.getElementById('splash').classList.remove('hidden');
   } catch(e){
+    const isNetErr = !navigator.onLine || e instanceof TypeError;
     const cached = dcLoad('contracts');
     if(cached){
       renderContracts(cached);
       document.getElementById('splash').classList.remove('hidden');
-      if(!navigator.onLine) toast('📴 Dati offline');
-    } else { toast('Errore caricamento: '+e.message); }
+      toast('📴 Modalità offline — dati dall\'ultima connessione');
+    } else if(isNetErr) {
+      toast('📴 Offline — nessun dato in cache. Connettiti almeno una volta.');
+    } else {
+      toast('Errore caricamento: '+e.message);
+    }
   }
   finally { hideLoading(); }
 }
@@ -991,14 +996,21 @@ async function loadProjectsForContract(){
     renderProjects(enriched);
     document.getElementById('splash').classList.remove('hidden');
   } catch(e){
+    const isNetErr = !navigator.onLine || e instanceof TypeError;
     const cached = dcLoad('projects_'+currentContract.id);
     if(cached){
       _allProjectsCount = cached.length;
       _myProjectsCount = cached.filter(p=>p.isMine).length;
       renderProjects(cached);
       document.getElementById('splash').classList.remove('hidden');
-      if(!navigator.onLine) toast('📴 Progetti offline');
-    } else { toast('Errore: '+e.message); }
+      toast('📴 Modalità offline — dati dall\'ultima connessione');
+    } else if(isNetErr) {
+      // Nessuna cache per questo appalto: torna alla lista appalti
+      toast('📴 Offline — apri questo appalto quando sei connesso per abilitarlo offline');
+      goBackToContracts();
+    } else {
+      toast('Errore: '+e.message);
+    }
   }
   finally { hideLoading(); }
 }
