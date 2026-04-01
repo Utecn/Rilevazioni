@@ -197,6 +197,17 @@ body.sort-mode .sort-handle{display:block;}
 .mag-item-name{font-size:13px;font-weight:700;}
 .mag-item-meta{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:2px;}
 
+/* ── RECENT LOG ── */
+#recentLog{margin-top:10px;padding:0 0 6px;}
+.recent-log-label{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;padding:0 2px 6px;opacity:.7;}
+.recent-log-row{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;margin-bottom:5px;overflow:hidden;}
+.recent-log-row:last-child{margin-bottom:0;}
+.rl-name{font-size:13px;font-weight:700;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rl-dur{font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--orange);flex-shrink:0;}
+.rl-meta{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);flex-shrink:0;white-space:nowrap;}
+.rl-pending{color:var(--orange);font-size:9px;font-family:'Share Tech Mono',monospace;flex-shrink:0;}
+.recent-log-empty{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);text-align:center;padding:10px 0;opacity:.5;}
+
 /* ── FOOTER ── */
 .footer{flex-shrink:0;display:flex;border-top:1px solid var(--border);background:var(--panel);}
 .stat{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;border-right:1px solid var(--border);gap:1px;}
@@ -424,7 +435,7 @@ body.sort-mode .sort-handle{display:block;}
   <button class="hbtn add" onclick="openAdd()">＋</button>
 </div>
 <div class="sort-banner" id="sortBanner">▲▼  TRASCINA I TASTI — TAP "FINE" PER USCIRE</div>
-<div class="scroll-area"><div class="grid" id="grid"></div></div>
+<div class="scroll-area"><div class="grid" id="grid"></div><div id="recentLog"></div></div>
 <div class="footer">
   <div class="stat"><div class="stat-val" id="fActive">0</div><div class="stat-lbl">Attivi</div></div>
   <div class="stat"><div class="stat-val" id="fTotal">0</div><div class="stat-lbl">Tasti</div></div>
@@ -2116,6 +2127,31 @@ function updateFooter(){
   document.getElementById('fTotal').textContent=cards.length;
   document.getElementById('fRec').textContent=logEntries.length;
   document.getElementById('fActive').textContent=cards.filter(c=>c.running).length;
+  renderRecentLog();
+}
+
+function renderRecentLog(){
+  const wrap = document.getElementById('recentLog');
+  if(!wrap) return;
+  // Prendi le 3 più recenti (logEntries è già ordinato descending per started_at)
+  const recent = logEntries.slice(0, 3);
+  if(!recent.length){
+    wrap.innerHTML = '';
+    return;
+  }
+  let html = '<div class="recent-log-label">Ultime rilevazioni</div>';
+  recent.forEach(r => {
+    const isOffline = !!r._offline_pending;
+    const durStr = r.duration_ms != null ? fmtS(r.duration_ms) : '—';
+    const timeInfo = timeStr(r.started_at) + (r.ended_at ? ' → ' + timeStr(r.ended_at) : '');
+    html += '<div class="recent-log-row">' +
+      '<div class="rl-name">' + esc(r.card_name || '—') + '</div>' +
+      '<div class="rl-meta">' + timeInfo + '</div>' +
+      '<div class="rl-dur">' + durStr + '</div>' +
+      (isOffline ? '<div class="rl-pending">📴</div>' : '') +
+    '</div>';
+  });
+  wrap.innerHTML = html;
 }
 
 /* ── QUANTITÀ ── */
