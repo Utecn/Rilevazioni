@@ -1,9 +1,9 @@
 /* ═══════════════════════════════════════
    Service Worker — Rilevazioni PWA
-   v3 — Offline completo
+   v4 — Revisione 13.07.2026
 ═══════════════════════════════════════ */
 
-const CACHE = 'rilevazioni-v3';
+const CACHE = 'rilevazioni-v4';
 
 // File locali da pre-cachare all'installazione
 const LOCAL_ASSETS = [

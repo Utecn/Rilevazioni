@@ -17,7 +17,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
   --bg:#060608;--panel:#0d0d12;--card:#111118;--card2:#16161f;
-  --border:#1e1e2e;--border2:#2a2a3e;--text:#c8c8d8;--dim:#4a4a6a;
+  --border:#2c2e48;--border2:#3c3f60;--text:#e8eaf2;--dim:#9aa0c0;
   --orange:#ff5500;--orange-dim:rgba(255,85,0,0.15);--orange-glow:rgba(255,85,0,0.4);
   --cyan:#00e5ff;--cyan-dim:rgba(0,229,255,0.1);--green:#00ff88;--purple:#b388ff;--red:#ff3355;
 }
@@ -48,7 +48,7 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 .login-title{font-size:24px;font-weight:700;letter-spacing:1px;margin-bottom:4px;}
 .login-sub{font-size:12px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:28px;letter-spacing:1px;}
 .login-field{width:100%;margin-bottom:12px;}
-.login-label{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;display:block;margin-bottom:6px;font-family:'Share Tech Mono',monospace;}
+.login-label{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;display:block;margin-bottom:6px;font-family:'Share Tech Mono',monospace;}
 .login-input{width:100%;padding:13px 14px;background:var(--card);border:1px solid var(--border2);border-radius:8px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:600;outline:none;transition:border-color .15s;}
 .login-input:focus{border-color:var(--orange);}
 .login-btn{width:100%;padding:14px;background:var(--orange);border:none;border-radius:8px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;letter-spacing:2px;cursor:pointer;margin-top:6px;box-shadow:0 0 24px rgba(255,85,0,.3);}
@@ -78,18 +78,18 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 .contract-item:active{opacity:.75;}
 .contract-item-body{flex:1;padding:14px 16px;}
 .contract-item-name{font-size:15px;font-weight:700;color:var(--text);}
-.contract-item-meta{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;}
+.contract-item-meta{font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;}
 .contract-item-arrow{padding:0 16px;align-self:stretch;display:flex;align-items:center;color:var(--purple);font-size:16px;}
 .contract-item-del{padding:0 14px;align-self:stretch;display:flex;align-items:center;border-left:1px solid var(--border2);color:var(--red);font-size:16px;cursor:pointer;}
 .proj-list-wrap{width:100%;max-width:360px;}
-.proj-list-label{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:8px;font-family:'Share Tech Mono',monospace;padding-left:4px;}
+.proj-list-label{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:8px;font-family:'Share Tech Mono',monospace;padding-left:4px;}
 .proj-list{display:flex;flex-direction:column;gap:6px;}
 .proj-item-wrap{display:flex;align-items:center;gap:6px;}
 .proj-item{flex:1;display:flex;align-items:center;background:var(--card);border:1px solid var(--border2);border-radius:8px;overflow:hidden;cursor:pointer;min-width:0;}
 .proj-item:active{opacity:.75;}
 .proj-item-body{flex:1;padding:12px 14px;min-width:0;}
 .proj-item-name{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.proj-item-meta{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:2px;}
+.proj-item-meta{font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:2px;}
 .proj-item-del{width:44px;align-self:stretch;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--red);border-radius:8px;color:var(--red);font-size:16px;cursor:pointer;touch-action:manipulation;}
 .proj-item-del:active{opacity:.6;}
 .proj-item-team{width:44px;align-self:stretch;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(179,136,255,0.08);border:2px solid var(--purple);border-radius:8px;color:var(--purple);font-size:18px;cursor:pointer;touch-action:manipulation;}
@@ -103,7 +103,7 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 .proj-toggle-slider::before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s;}
 .proj-toggle input:checked + .proj-toggle-slider{background:var(--orange);}
 .proj-toggle input:checked + .proj-toggle-slider::before{transform:translateX(18px);}
-.proj-section-label{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;padding:10px 4px 4px;opacity:.7;}
+.proj-section-label{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;padding:10px 4px 4px;opacity:.7;}
 .proj-item.mine{border-color:var(--orange);}
 .proj-item.member{border-color:var(--border2);}
 
@@ -113,7 +113,7 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 .proj-selector:active{opacity:.75;}
 .proj-selector-icon{color:var(--purple);font-size:14px;flex-shrink:0;}
 .proj-selector-name{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;}
-.proj-selector-arrow{color:var(--dim);font-size:10px;flex-shrink:0;}
+.proj-selector-arrow{color:var(--dim);font-size:11px;flex-shrink:0;}
 .hbtn{background:var(--card2);border:1px solid var(--border2);color:var(--text);padding:6px 9px;border-radius:6px;font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:1px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
 .hbtn:active{opacity:.65;}
 .hbtn.sort-active{border-color:var(--cyan);color:var(--cyan);}
@@ -128,9 +128,9 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 .session-item:active{opacity:.7;}
 .session-item:hover{border-color:var(--cyan);}
 .session-item-name{font-size:14px;font-weight:700;color:var(--text);}
-.session-item-meta{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;letter-spacing:.5px;}
-.session-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1px;background:rgba(0,229,255,.1);border:1px solid var(--cyan);color:var(--cyan);margin-bottom:2px;}
-.sess-indicator{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--cyan);letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.session-item-meta{font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;letter-spacing:.5px;}
+.session-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1px;background:rgba(0,229,255,.1);border:1px solid var(--cyan);color:var(--cyan);margin-bottom:2px;}
+.sess-indicator{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--cyan);letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
 /* ── SORT BANNER ── */
 .sort-banner{display:none;flex-shrink:0;background:rgba(0,229,255,.05);border-bottom:1px solid var(--cyan);padding:7px 14px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--cyan);letter-spacing:1px;text-align:center;}
@@ -153,8 +153,8 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 .dot{position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--dim);transition:background .2s;}
 .card.on .dot{background:var(--orange);box-shadow:0 0 8px var(--orange);animation:blink 1.2s ease-in-out infinite;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.badge{position:absolute;top:7px;left:8px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);}
-.card.on .badge{color:var(--orange);}
+.badge{position:absolute;top:6px;left:7px;font-family:'Share Tech Mono',monospace;font-size:12px;font-weight:700;color:var(--cyan);background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.35);border-radius:5px;padding:1px 7px;z-index:2;}
+.card.on .badge{color:var(--orange);border-color:var(--orange);background:rgba(255,85,0,.1);}
 .sort-handle{display:none;position:absolute;top:5px;left:50%;transform:translateX(-50%);color:var(--cyan);font-size:11px;letter-spacing:3px;pointer-events:none;}
 body.sort-mode .sort-handle{display:block;}
 .card-name{font-size:14px;font-weight:600;letter-spacing:.5px;text-align:center;color:var(--text);line-height:1.25;word-break:break-word;max-width:100%;padding:0 4px;margin-top:10px;}
@@ -163,7 +163,7 @@ body.sort-mode .sort-handle{display:block;}
 .card.on .card-timer{color:var(--orange);text-shadow:0 0 10px var(--orange-glow);}
 .card-btn{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;padding:5px 14px;border-radius:4px;border:1px solid var(--border2);background:transparent;pointer-events:none;transition:all .2s;font-family:'Rajdhani',sans-serif;}
 .card.on .card-btn{color:var(--orange);border-color:var(--orange);background:var(--orange-dim);}
-.card-qty{position:absolute;bottom:7px;right:8px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);background:var(--card2);border:1px solid var(--border2);border-radius:4px;padding:2px 6px;cursor:pointer;z-index:2;line-height:1.5;transition:color .15s,border-color .15s;}
+.card-qty{position:absolute;bottom:7px;right:8px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);background:var(--card2);border:1px solid var(--border2);border-radius:4px;padding:2px 6px;cursor:pointer;z-index:2;line-height:1.5;transition:color .15s,border-color .15s;}
 .card.on .card-qty{color:var(--orange);border-color:rgba(255,85,0,0.4);}
 .qty-controls{display:flex;align-items:center;gap:16px;justify-content:center;margin:20px 0 16px;}
 .qty-btn{width:52px;height:52px;border-radius:50%;border:2px solid var(--border2);background:var(--card2);color:var(--text);font-size:26px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;}
@@ -181,7 +181,7 @@ body.sort-mode .sort-handle{display:block;}
 .ana-section{background:var(--card);border:1px solid var(--border2);border-radius:8px;margin-bottom:10px;overflow:hidden;}
 .ana-section-header{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;cursor:pointer;background:var(--card2);}
 .ana-section-title{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--text);text-transform:uppercase;}
-.ana-section-count{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;}
+.ana-section-count{font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;}
 .ana-section-body{display:none;padding:10px 14px 14px;}
 .ana-section.open .ana-section-body{display:block;}
 .ana-tag{display:inline-flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border2);border-radius:4px;padding:4px 8px;font-size:12px;font-weight:600;margin:3px;cursor:default;}
@@ -195,32 +195,32 @@ body.sort-mode .sort-handle{display:block;}
 .mag-item:last-child{border-bottom:none;}
 .mag-item-info{flex:1;}
 .mag-item-name{font-size:13px;font-weight:700;}
-.mag-item-meta{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:2px;}
+.mag-item-meta{font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:2px;}
 
 /* ── RECENT LOG ── */
 #recentLog{margin-top:10px;padding:0 0 6px;}
-.recent-log-label{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;padding:0 2px 6px;opacity:.7;}
+.recent-log-label{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;padding:0 2px 6px;opacity:.7;}
 .recent-log-row{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;margin-bottom:5px;overflow:hidden;}
 .recent-log-row:last-child{margin-bottom:0;}
 .rl-name{font-size:13px;font-weight:700;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .rl-dur{font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--orange);flex-shrink:0;}
-.rl-meta{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);flex-shrink:0;white-space:nowrap;}
-.rl-pending{color:var(--orange);font-size:9px;font-family:'Share Tech Mono',monospace;flex-shrink:0;}
-.recent-log-empty{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);text-align:center;padding:10px 0;opacity:.5;}
+.rl-meta{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);flex-shrink:0;white-space:nowrap;}
+.rl-pending{color:var(--orange);font-size:11px;font-family:'Share Tech Mono',monospace;flex-shrink:0;}
+.recent-log-empty{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);text-align:center;padding:10px 0;opacity:.5;}
 
 /* ── FOOTER ── */
 .footer{flex-shrink:0;display:flex;border-top:1px solid var(--border);background:var(--panel);}
 .stat{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;border-right:1px solid var(--border);gap:1px;}
 .stat:last-child{border-right:none;}
 .stat-val{font-family:'Share Tech Mono',monospace;font-size:15px;color:var(--orange);}
-.stat-lbl{font-size:9px;font-weight:600;letter-spacing:1px;color:var(--dim);text-transform:uppercase;}
+.stat-lbl{font-size:11px;font-weight:600;letter-spacing:1px;color:var(--dim);text-transform:uppercase;}
 
 /* ── OVERLAY / SHEET ── */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;}
 .overlay.show{opacity:1;pointer-events:all;}
 .sheet{background:var(--panel);border:1px solid var(--border2);border-bottom:none;border-radius:16px 16px 0 0;width:100%;max-width:500px;padding:20px 16px 32px;transform:translateY(40px);transition:transform .25s cubic-bezier(.34,1.4,.64,1);max-height:85vh;overflow-y:auto;}
 .overlay.show .sheet{transform:translateY(0);}
-.sheet-title{font-size:10px;font-weight:700;letter-spacing:2.5px;color:var(--dim);text-transform:uppercase;margin-bottom:14px;font-family:'Share Tech Mono',monospace;}
+.sheet-title{font-size:11px;font-weight:700;letter-spacing:2.5px;color:var(--dim);text-transform:uppercase;margin-bottom:14px;font-family:'Share Tech Mono',monospace;}
 .sheet-opt{display:flex;align-items:center;gap:12px;background:var(--card2);border:1px solid var(--border2);border-radius:8px;padding:13px 14px;margin-bottom:8px;cursor:pointer;font-size:15px;font-weight:600;color:var(--text);}
 .sheet-opt:active{opacity:.7;}
 .sheet-opt.danger{color:var(--red);}
@@ -240,7 +240,7 @@ body.sort-mode .sort-handle{display:block;}
 .hist-back:active{opacity:.7;}
 .hist-title{flex:1;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;}
 .hist-title span{color:var(--green);}
-.hist-proj{font-size:10px;color:var(--purple);font-family:'Share Tech Mono',monospace;}
+.hist-proj{font-size:11px;color:var(--purple);font-family:'Share Tech Mono',monospace;}
 .hist-toolbar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--panel);border-bottom:1px solid var(--border);flex-wrap:wrap;}
 .filter-select{flex:1;min-width:0;padding:7px 10px;background:var(--card2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;outline:none;}
 .exp-btn{background:var(--green);border:none;color:#000;padding:7px 11px;border-radius:6px;font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
@@ -251,17 +251,17 @@ body.sort-mode .sort-handle{display:block;}
 .hstat{flex:1;display:flex;flex-direction:column;align-items:center;padding:7px 4px;border-right:1px solid var(--border);gap:1px;}
 .hstat:last-child{border-right:none;}
 .hstat-val{font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--green);}
-.hstat-lbl{font-size:9px;font-weight:600;letter-spacing:1px;color:var(--dim);text-transform:uppercase;}
+.hstat-lbl{font-size:11px;font-weight:600;letter-spacing:1px;color:var(--dim);text-transform:uppercase;}
 .hist-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .hist-empty{padding:60px 20px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--dim);line-height:2;}
 .day-group{margin-bottom:2px;}
-.day-label{padding:8px 14px 4px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;position:sticky;top:0;background:var(--bg);z-index:1;border-bottom:1px solid var(--border);}
+.day-label{padding:8px 14px 4px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;position:sticky;top:0;background:var(--bg);z-index:1;border-bottom:1px solid var(--border);}
 .rec-row{display:flex;align-items:center;border-bottom:1px solid var(--border);padding:10px 12px;gap:10px;}
 .rec-row:active{background:var(--card2);}
 .rec-name{flex:1;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .rec-info{text-align:center;}
-.rec-time{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);white-space:nowrap;line-height:1.7;}
-.rec-user{font-size:9px;color:var(--purple);font-family:'Share Tech Mono',monospace;margin-top:1px;}
+.rec-time{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);white-space:nowrap;line-height:1.7;}
+.rec-user{font-size:11px;color:var(--purple);font-family:'Share Tech Mono',monospace;margin-top:1px;}
 .rec-dur{font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--orange);font-weight:700;white-space:nowrap;min-width:70px;text-align:right;}
 .rec-wrap{position:relative;overflow:hidden;border-bottom:1px solid var(--border);touch-action:pan-y;user-select:none;}
 /* ── REC-WRAP: sfondo sinistro (elimina) e destro (riassegna) ── */
@@ -285,8 +285,8 @@ body.sort-mode .sort-handle{display:block;}
 .proj-sheet-body{flex:1;padding:11px 14px;}
 .proj-sheet-name{font-size:15px;font-weight:700;}
 .proj-sheet-name.active-name{color:var(--purple);}
-.proj-sheet-meta{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:2px;}
-.proj-sheet-badge{padding:4px 8px;background:var(--purple);color:#000;border-radius:4px;font-size:10px;font-weight:700;margin-right:10px;font-family:'Share Tech Mono',monospace;}
+.proj-sheet-meta{font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:2px;}
+.proj-sheet-badge{padding:4px 8px;background:var(--purple);color:#000;border-radius:4px;font-size:11px;font-weight:700;margin-right:10px;font-family:'Share Tech Mono',monospace;}
 .proj-sheet-del{padding:0 14px;align-self:stretch;display:flex;align-items:center;border-left:1px solid var(--border2);color:var(--red);font-size:16px;cursor:pointer;}
 .proj-divider{border:none;border-top:1px solid var(--border2);margin:12px 0;}
 
@@ -295,7 +295,7 @@ body.sort-mode .sort-handle{display:block;}
 .members-screen.show{transform:translateX(0);}
 .members-header{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--border);}
 .members-body{flex:1;overflow-y:auto;padding:14px;}
-.members-section-title{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:8px;margin-top:16px;}
+.members-section-title{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:8px;margin-top:16px;}
 .members-section-title:first-child{margin-top:0;}
 .member-chip{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;margin-bottom:6px;}
 .member-chip-name{font-size:14px;font-weight:600;}
@@ -314,29 +314,29 @@ body.sort-mode .sort-handle{display:block;}
 .proc-back:active{opacity:.7;}
 .proc-title{flex:1;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;}
 .proc-title span{color:var(--cyan);}
-.proc-proj{font-size:10px;color:var(--purple);font-family:'Share Tech Mono',monospace;}
+.proc-proj{font-size:11px;color:var(--purple);font-family:'Share Tech Mono',monospace;}
 .proc-body{flex:1;overflow-y:auto;padding:12px;}
 .proc-item{display:flex;align-items:center;background:var(--card);border:1px solid var(--border2);border-radius:8px;margin-bottom:8px;cursor:pointer;overflow:hidden;}
 .proc-item:active{opacity:.75;}
 .proc-item-body{flex:1;padding:12px 14px;}
 .proc-item-name{font-size:14px;font-weight:700;color:var(--cyan);}
-.proc-item-detail{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;line-height:1.6;}
+.proc-item-detail{font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;line-height:1.6;}
 .proc-item-del{padding:0 14px;align-self:stretch;display:flex;align-items:center;border-left:1px solid var(--border2);color:var(--red);font-size:16px;cursor:pointer;}
 .proc-empty{padding:40px 20px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);line-height:2;}
 .proc-add-btn{width:100%;padding:13px;background:var(--cyan);border:none;border-radius:8px;color:#000;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;cursor:pointer;margin-bottom:10px;}
 .proc-add-btn:active{opacity:.8;}
 /* Form nuovo processo */
 .proc-form{background:var(--card2);border:1px solid var(--border2);border-radius:8px;padding:14px;margin-bottom:12px;}
-.proc-form-title{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:12px;font-family:'Share Tech Mono',monospace;}
+.proc-form-title{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:12px;font-family:'Share Tech Mono',monospace;}
 .proc-field{margin-bottom:10px;}
-.proc-label{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;display:block;margin-bottom:5px;}
+.proc-label{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;display:block;margin-bottom:5px;}
 .proc-select{width:100%;padding:10px 12px;background:var(--card);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;outline:none;}
 .proc-select[type=text],.proc-lookup-input{text-transform:uppercase;}
 .proc-select:focus{border-color:var(--cyan);}
 .proc-submit{width:100%;padding:11px;background:var(--cyan);border:none;border-radius:6px;color:#000;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;cursor:pointer;margin-top:4px;}
 .proc-submit:active{opacity:.8;}
 /* Indicatore processo attivo nell'header */
-.proc-indicator{font-size:9px;font-family:'Share Tech Mono',monospace;color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
+.proc-indicator{font-size:11px;font-family:'Share Tech Mono',monospace;color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
 
 /* ── BACKUP PANEL ── */
 .backup-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
@@ -348,8 +348,8 @@ body.sort-mode .sort-handle{display:block;}
 .backup-row.updated{border-color:rgba(0,229,255,.25);background:rgba(0,229,255,.03);}
 .backup-row-info{flex:1;min-width:0;}
 .backup-row-name{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.backup-row-meta{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;line-height:1.6;}
-.backup-action-badge{font-size:9px;font-weight:700;letter-spacing:1px;font-family:'Share Tech Mono',monospace;padding:3px 7px;border-radius:4px;flex-shrink:0;align-self:flex-start;}
+.backup-row-meta{font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;line-height:1.6;}
+.backup-action-badge{font-size:11px;font-weight:700;letter-spacing:1px;font-family:'Share Tech Mono',monospace;padding:3px 7px;border-radius:4px;flex-shrink:0;align-self:flex-start;}
 .badge-DELETE{background:rgba(255,51,85,.2);color:var(--red);border:1px solid var(--red);}
 .badge-UPDATE{background:rgba(0,229,255,.1);color:var(--cyan);border:1px solid var(--cyan);}
 .badge-INSERT{background:rgba(0,255,136,.1);color:var(--green);border:1px solid var(--green);}
@@ -501,14 +501,14 @@ body.sort-mode .sort-handle{display:block;}
 
 <div class="overlay" id="renameOverlay"><div class="sheet">
   <div class="sheet-title">RINOMINA TASTO</div>
-  <input class="text-input" id="renameInput" type="text" maxlength="30" placeholder="Nome tasto...">
+  <input class="text-input" id="renameInput" type="text" placeholder="Nome tasto...">
   <button class="confirm-btn" onclick="doRename()">CONFERMA</button>
   <button class="sheet-cancel" onclick="closeSheet('renameOverlay')">Annulla</button>
 </div></div>
 
 <div class="overlay" id="addOverlay"><div class="sheet">
   <div class="sheet-title">NUOVO TASTO</div>
-  <input class="text-input" id="addInput" type="text" maxlength="30" placeholder="Nome tasto...">
+  <input class="text-input" id="addInput" type="text" placeholder="Nome tasto...">
   <button class="confirm-btn" onclick="doAdd()">AGGIUNGI</button>
   <button class="sheet-cancel" onclick="closeSheet('addOverlay')">Annulla</button>
 </div></div>
@@ -526,7 +526,7 @@ body.sort-mode .sort-handle{display:block;}
 <div class="overlay" id="newProjOverlay"><div class="sheet">
   <div class="sheet-title">NUOVO PROGETTO</div>
   <div style="margin-bottom:12px;">
-    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">DATA</div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">DATA</div>
     <div style="display:flex;gap:6px;">
       <select class="text-input" id="newProjDay" style="padding:10px 8px;font-size:14px;flex:1;"></select>
       <select class="text-input" id="newProjMonth" style="padding:10px 8px;font-size:14px;flex:2;"></select>
@@ -534,12 +534,12 @@ body.sort-mode .sort-handle{display:block;}
     </div>
   </div>
   <div style="margin-bottom:12px;">
-    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">NOME PROGETTO</div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">NOME PROGETTO</div>
     <input class="text-input" id="newProjInput" type="text" maxlength="40" placeholder="Nome progetto...">
-    <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:5px;letter-spacing:1px;" id="newProjPreview">—</div>
+    <div style="font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:5px;letter-spacing:1px;" id="newProjPreview">—</div>
   </div>
   <div style="margin-bottom:12px;">
-    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">REPARTO <span style="color:var(--dim);font-weight:400;">(opzionale)</span></div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">REPARTO <span style="color:var(--dim);font-weight:400;">(opzionale)</span></div>
     <div style="display:flex;gap:6px;margin-bottom:6px;">
       <select class="text-input" id="newProjReparto" style="padding:10px 12px;font-size:14px;flex:1;"><option value="">— nessuno —</option></select>
       <button type="button" id="newProjRepartoAddBtn" onclick="toggleNewRepartoInline()" style="flex-shrink:0;padding:0 14px;background:var(--card2);border:1px solid var(--border2);color:var(--cyan);border-radius:8px;font-size:18px;cursor:pointer;">＋</button>
@@ -550,11 +550,11 @@ body.sort-mode .sort-handle{display:block;}
         <button type="button" onclick="saveNewRepartoInline()" style="flex-shrink:0;padding:0 14px;background:var(--cyan);border:none;color:#000;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:Rajdhani,sans-serif;">SALVA</button>
         <button type="button" onclick="cancelNewRepartoInline()" style="flex-shrink:0;padding:0 10px;background:var(--card2);border:1px solid var(--border2);color:var(--dim);border-radius:8px;font-size:13px;cursor:pointer;">✕</button>
       </div>
-      <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:5px;letter-spacing:.5px;" id="newRepartoNote">il reparto verrà associato al magazzino dell'appalto</div>
+      <div style="font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:5px;letter-spacing:.5px;" id="newRepartoNote">il reparto verrà associato al magazzino dell'appalto</div>
     </div>
   </div>
   <div style="margin-bottom:12px;">
-    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">RESPONSABILE</div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">RESPONSABILE</div>
     <select class="text-input" id="newProjResponsible" style="padding:10px 12px;font-size:14px;"></select>
   </div>
   <button class="confirm-btn" onclick="doCreateProject()" style="background:var(--purple);">CREA PROGETTO</button>
@@ -570,11 +570,11 @@ body.sort-mode .sort-handle{display:block;}
 
 <div class="overlay" id="editProjOverlay"><div class="sheet">
   <div class="sheet-title">MODIFICA PROGETTO</div>
-  <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">NOME PROGETTO</div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">NOME PROGETTO</div>
   <input class="text-input" id="editProjName" type="text" maxlength="40" placeholder="Nome progetto...">
-  <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;margin-top:4px;">REPARTO</div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;margin-top:4px;">REPARTO</div>
   <select class="text-input" id="editProjReparto" style="padding:10px 12px;font-size:14px;margin-bottom:12px;"></select>
-  <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">RESPONSABILE</div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;margin-bottom:6px;">RESPONSABILE</div>
   <select class="text-input" id="editProjResponsible" style="padding:10px 12px;font-size:14px;margin-bottom:14px;"></select>
   <button class="confirm-btn" onclick="doEditProj()" style="background:var(--purple);">SALVA MODIFICHE</button>
   <div class="sheet-opt danger" onclick="doDeleteProjFromEdit()" style="margin-top:4px;"><span class="sheet-opt-icon">🗑</span> Elimina progetto</div>
@@ -622,7 +622,7 @@ body.sort-mode .sort-handle{display:block;}
       <button type="button" class="ana-add-btn" onclick="toggleMagazzino()">+</button>
     </div>
     <div id="cMagazzino_new" style="display:none;margin-top:6px;background:var(--card);border:1px solid var(--border2);border-radius:6px;padding:10px;">
-      <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:8px;">NUOVO MAGAZZINO</div>
+      <div style="font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:8px;">NUOVO MAGAZZINO</div>
       <input type="text" id="mag_citta" class="proc-select" placeholder="CITTÀ..." style="width:100%;margin-bottom:6px;text-transform:uppercase;">
       <input type="text" id="mag_edificio" class="proc-select" placeholder="ID EDIFICIO (opz.)" style="width:100%;margin-bottom:6px;text-transform:uppercase;">
       <input type="text" id="mag_via" class="proc-select" placeholder="VIA..." style="width:100%;margin-bottom:6px;text-transform:uppercase;">
@@ -738,7 +738,7 @@ body.sort-mode .sort-handle{display:block;}
 
   <!-- ANTEPRIMA NOME -->
   <div style="background:var(--card2);border:1px solid var(--border2);border-radius:6px;padding:10px 12px;margin-top:4px;">
-    <div style="font-size:9px;color:var(--dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:4px;">NOME APPALTO (GENERATO)</div>
+    <div style="font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:4px;">NOME APPALTO (GENERATO)</div>
     <div id="contractPreview" style="font-size:13px;font-weight:700;color:var(--orange);">—</div>
   </div>
 
@@ -748,7 +748,7 @@ body.sort-mode .sort-handle{display:block;}
 
 <div class="overlay" id="qtyOverlay"><div class="sheet">
   <div class="sheet-title">QUANTITÀ — <span id="qtyCardName" style="color:var(--orange);"></span></div>
-  <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:4px;text-align:center;">pezzi · unità · cicli</div>
+  <div style="font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:4px;text-align:center;">pezzi · unità · cicli</div>
   <div class="qty-controls">
     <button class="qty-btn" id="qtyMinus">−</button>
     <input class="qty-input" id="qtyInput" type="number" min="1" max="9999" value="1">
@@ -1339,7 +1339,7 @@ async function openSessionPicker(proc, label){
     list.appendChild(newBtn);
 
     const divider = document.createElement('div');
-    divider.style.cssText = 'font-size:9px;color:var(--dim);font-family:Share Tech Mono,monospace;letter-spacing:2px;text-transform:uppercase;padding:10px 4px 6px;';
+    divider.style.cssText = 'font-size:11px;color:var(--dim);font-family:Share Tech Mono,monospace;letter-spacing:2px;text-transform:uppercase;padding:10px 4px 6px;';
     divider.textContent = 'SESSIONI ESISTENTI';
     list.appendChild(divider);
 
@@ -1381,7 +1381,7 @@ function renderProcesses(procs){
       const item=document.createElement('div'); item.className='proc-item';
       item.innerHTML=
         '<div class="proc-item-body">'+
-          '<div class="proc-item-name">'+esc(label)+(isOffline?' <span style="font-size:10px;color:var(--orange);font-family:Share Tech Mono,monospace;">📴 IN ATTESA</span>':'')+
+          '<div class="proc-item-name">'+esc(label)+(isOffline?' <span style="font-size:11px;color:var(--orange);font-family:Share Tech Mono,monospace;">📴 IN ATTESA</span>':'')+
           '</div>'+
           (etLabel?'<div class="proc-item-detail">'+esc(etLabel)+'</div>':'')+
         '</div>'+
@@ -1861,7 +1861,6 @@ function startRealtimeSync(){
           const el = document.querySelector('.card[data-id="'+rec.id+'"]');
           if(el){
             el.querySelector('.card-name').textContent = rec.name;
-            el.querySelector('.badge').textContent = '#'+rec.records;
           } else {
             renderAll(); // rebuild completo se DOM non in sync
           }
@@ -1905,25 +1904,29 @@ async function loadCards(){
 }
 
 async function loadLog(){
+  // Carica solo le rilevazioni della sessione corrente (se attiva), altrimenti tutto il progetto.
   // Prima prova con il join sessioni; se fallisce (tabella non ancora creata) ricade su select semplice
+  const cacheKey = 'log_'+currentProject.id+(currentSession?'_'+currentSession.id:'');
   let data, error;
   try {
-    ({ data, error } = await sb.from('log_entries')
+    let q = sb.from('log_entries')
       .select('*, sessions(name)')
-      .eq('project_id', currentProject.id)
-      .order('started_at', {ascending:false}).limit(1000));
+      .eq('project_id', currentProject.id);
+    if(currentSession) q = q.eq('session_id', currentSession.id);
+    ({ data, error } = await q.order('started_at', {ascending:false}).limit(1000));
     if(error){
-      ({ data, error } = await sb.from('log_entries')
+      let q2 = sb.from('log_entries')
         .select('*')
-        .eq('project_id', currentProject.id)
-        .order('started_at', {ascending:false}).limit(1000));
+        .eq('project_id', currentProject.id);
+      if(currentSession) q2 = q2.eq('session_id', currentSession.id);
+      ({ data, error } = await q2.order('started_at', {ascending:false}).limit(1000));
       if(error) throw error;
     }
     logEntries = (data||[]).map(r=>({...r, session_name: r.sessions?.name||null}));
-    dcSave('log_'+currentProject.id, logEntries);
+    dcSave(cacheKey, logEntries);
   } catch(e) {
     // Offline fallback
-    const cached = dcLoad('log_'+currentProject.id);
+    const cached = dcLoad(cacheKey);
     if(cached !== null){
       logEntries = cached;
       if(!navigator.onLine) toast('📴 Storico offline');
@@ -1934,7 +1937,7 @@ async function loadLog(){
   // Aggiungi le rilevazioni in coda offline (non ancora sincronizzate)
   const offlineQueue = JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');
   const pendingEntries = offlineQueue
-    .filter(item => item.payload.project_id === currentProject.id)
+    .filter(item => item.payload.project_id === currentProject.id && (!currentSession || item.payload.session_id === currentSession.id))
     .map(item => ({
       ...item.payload,
       id: '_offline_'+item.queuedAt,
@@ -1956,13 +1959,18 @@ function renderAll(){
   updateFooter();
 }
 
+// Numero di rilevazioni della sessione corrente per un tasto (da logEntries, già scopato per sessione)
+function cardSessCount(c){
+  return logEntries.filter(r=>r.card_id===c.id || (!r.card_id && r.card_name===c.name)).length;
+}
+
 function makeCard(c){
   const div=document.createElement('div');
   div.className='card'+(c.running?' on':'')+(sortMode?' sortable':'');
   div.dataset.id=c.id;
   div.innerHTML=
     '<div class="scan"></div><div class="dot"></div>'+
-    '<div class="badge">#'+c.records+'</div>'+
+    '<div class="badge">#'+cardSessCount(c)+'</div>'+
     '<div class="sort-handle">· · ·</div>'+
     '<div class="card-name">'+esc(c.name)+'</div>'+
     '<div class="card-timer" id="t_'+c.id+'">'+fmt(c.elapsed)+'</div>'+
@@ -2075,7 +2083,7 @@ async function toggleCard(id){
     const savedQty = c.qty||1;
     c.running=false; c.start=null; c.elapsed=0; c.records++;
     const el=document.querySelector('.card[data-id="'+id+'"]');
-    if(el){el.classList.remove('on');el.querySelector('.card-btn').textContent='START';el.querySelector('.card-timer').textContent='00:00.000';el.querySelector('.badge').textContent='#'+c.records;
+    if(el){el.classList.remove('on');el.querySelector('.card-btn').textContent='START';el.querySelector('.card-timer').textContent='00:00.000';
       const qEl=el.querySelector('.card-qty'); if(qEl)qEl.textContent='×1';
     }
     c.qty=1;
@@ -2089,6 +2097,7 @@ async function toggleCard(id){
       };
     if(!navigator.onLine){
       queueOffline(payload);
+      logEntries.unshift({...payload, id:'_offline_'+Date.now(), _offline_pending:true, session_name:null});
       toast('📴 Salvato offline — verrà sincronizzato');
     } else {
     try {
@@ -2127,6 +2136,11 @@ function updateFooter(){
   document.getElementById('fTotal').textContent=cards.length;
   document.getElementById('fRec').textContent=logEntries.length;
   document.getElementById('fActive').textContent=cards.filter(c=>c.running).length;
+  // Aggiorna i badge conteggio-sessione sulle card
+  cards.forEach(c=>{
+    const b=document.querySelector('.card[data-id="'+c.id+'"] .badge');
+    if(b) b.textContent='#'+cardSessCount(c);
+  });
   renderRecentLog();
 }
 
@@ -2460,7 +2474,7 @@ function renderProjSheet(projects){
     if(currentUser.role==='admin') item.querySelector('.proj-sheet-del').addEventListener('click',e=>{e.stopPropagation();deleteProjConfirm(p.id,p.name);});
     wrap.appendChild(item);
   });
-  const note=document.createElement('div'); note.style.cssText='font-size:10px;color:var(--dim);font-family:\'Share Tech Mono\',monospace;text-align:center;padding:4px 0 8px;';
+  const note=document.createElement('div'); note.style.cssText='font-size:11px;color:var(--dim);font-family:\'Share Tech Mono\',monospace;text-align:center;padding:4px 0 8px;';
   note.textContent='tap sul progetto attivo per rinominarlo'; wrap.appendChild(note);
 }
 async function openNewProjSheet(){
@@ -2679,7 +2693,7 @@ function toggleAllUsers(){
 
 async function openHistory(){
   if(!currentProject){ toast('Seleziona prima un progetto'); return; }
-  document.getElementById('histProjLabel').textContent=currentProject?.name||'';
+  document.getElementById('histProjLabel').textContent=(currentProject?.name||'')+(currentSession?' — '+currentSession.name:'');
   document.getElementById('clearBtn').style.display=(currentUser?.role==='admin'||currentUser?.role==='project_manager')?'':'none';
   // Default: mostra tutte le rilevazioni del progetto
   showAllUsers = true;
@@ -2862,7 +2876,7 @@ function renderHistory(){
       delBg.innerHTML='<span>ELIMINA</span>';
       const row=document.createElement('div'); row.className='rec-row';
       row.innerHTML='<div class="rec-name">'+esc(r.card_name)+
-        (isOffline?' <span style="font-size:9px;color:var(--orange);font-family:Share Tech Mono,monospace;">📴</span>':'')+
+        (isOffline?' <span style="font-size:11px;color:var(--orange);font-family:Share Tech Mono,monospace;">📴</span>':'')+
         '</div>'+
         '<div class="rec-info"><div class="rec-time">'+timeStr(r.started_at)+' → '+timeStr(r.ended_at)+'</div>'+
         '<div class="rec-user">'+esc(r.user_name||'')+'</div></div>'+
@@ -2882,13 +2896,18 @@ function renderHistory(){
 }
 async function confirmClear(){
   const f=document.getElementById('filterSelect').value;
-  if(!confirm(f?'Svuotare le rilevazioni di "'+f+'"?':'Svuotare tutto lo storico del progetto?'))return;
+  const scope = currentSession ? 'di questa sessione' : 'di tutto il progetto';
+  if(!confirm(f?'Svuotare le rilevazioni di "'+f+'" '+scope+'?':'Svuotare le rilevazioni '+scope+'?'))return;
   try {
     let q=sb.from('log_entries').delete().eq('project_id',currentProject.id);
+    if(currentSession) q=q.eq('session_id',currentSession.id);
     if(f) q=q.eq('card_name',f);
     const {error}=await q; if(error)throw error;
-    if(!f){ await sb.from('cards').update({records:0}).eq('project_id',currentProject.id); cards.forEach(c=>c.records=0); }
-    else { const c=cards.find(x=>x.name===f); if(c){await sb.from('cards').update({records:0}).eq('id',c.id);c.records=0;} }
+    // Il cumulativo records viene azzerato solo svuotando l'intero progetto (senza sessione attiva)
+    if(!currentSession){
+      if(!f){ await sb.from('cards').update({records:0}).eq('project_id',currentProject.id); cards.forEach(c=>c.records=0); }
+      else { const c=cards.find(x=>x.name===f); if(c){await sb.from('cards').update({records:0}).eq('id',c.id);c.records=0;} }
+    }
     renderAll(); await loadLog(); openHistory(); toast('Storico svuotato');
   } catch(e){toast('Errore: '+e.message);}
 }
@@ -2931,7 +2950,22 @@ function openRenameActivity(entryId, row){
 /* ── EXPORT EXCEL ── */
 function openExport(){ document.getElementById('emailInput').value=''; showSheet('exportOverlay'); setTimeout(()=>document.getElementById('emailInput').focus(),120); }
 async function doExport(){
-  const filtered=getFilteredLog(); if(!filtered.length){toast('Nessuna rilevazione');return;}
+  // L'export contiene TUTTE le rilevazioni del progetto (tutte le sessioni), non solo quella corrente
+  let all = null;
+  if(navigator.onLine){
+    try{
+      let {data,error} = await sb.from('log_entries').select('*, sessions(name)').eq('project_id',currentProject.id).order('started_at',{ascending:false}).limit(10000);
+      if(error){ ({data,error} = await sb.from('log_entries').select('*').eq('project_id',currentProject.id).order('started_at',{ascending:false}).limit(10000)); }
+      if(!error) all = (data||[]).map(r=>({...r, session_name:r.sessions?.name||null}));
+    }catch(e){ /* fallback ai soli dati locali */ }
+  }
+  let filtered = all ? [...all] : getFilteredLog();
+  if(all){
+    if(!showAllUsers) filtered = filtered.filter(r=>r.user_id===currentUser.id);
+    const fSel=document.getElementById('filterSelect').value;
+    if(fSel) filtered = filtered.filter(r=>r.card_name===fSel);
+  }
+  if(!filtered.length){toast('Nessuna rilevazione');return;}
   const sorted=[...filtered].sort((a,b)=>new Date(a.started_at)-new Date(b.started_at));
   const wsData=[['N°','Progetto','Sessione','Tasto','Operatore','Data','Ora Inizio','Ora Fine','Durata (mm:ss.ms)','Durata (sec,ms)','Durata (ms)','Qtà']];
   sorted.forEach((r,i)=>{
@@ -3124,7 +3158,12 @@ async function flushOfflineQueue(){
           res = await sb.from('log_entries').insert(noQty).select().single();
         }
         if(res.error) throw res.error;
-        logEntries.unshift(res.data);
+        // Rimuovi la copia pending già visibile (evita conteggi doppi)
+        logEntries = logEntries.filter(e=>!(e._offline_pending && e.started_at===payload.started_at && e.card_id===payload.card_id));
+        // Aggiungi alla vista solo se appartiene alla sessione/progetto correnti
+        if(payload.project_id===currentProject?.id && (!currentSession || payload.session_id===currentSession.id)){
+          logEntries.unshift(res.data);
+        }
       } catch(e){ failed.push(item); }
     }
     localStorage.setItem(QUEUE_KEY, JSON.stringify(failed));
