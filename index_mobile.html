@@ -132,6 +132,12 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 .session-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1px;background:rgba(0,229,255,.1);border:1px solid var(--cyan);color:var(--cyan);margin-bottom:2px;}
 .sess-indicator{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--cyan);letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
+/* ── COLOR PICKER ── */
+.color-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding:6px 4px 16px;}
+.color-swatch{aspect-ratio:1;border-radius:12px;border:2px solid var(--border2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;transition:transform .1s;}
+.color-swatch:active{transform:scale(.92);}
+.color-swatch.none{color:var(--dim);background:var(--card2);font-size:13px;font-family:'Share Tech Mono',monospace;}
+
 /* ── SORT BANNER ── */
 .sort-banner{display:none;flex-shrink:0;background:rgba(0,229,255,.05);border-bottom:1px solid var(--cyan);padding:7px 14px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--cyan);letter-spacing:1px;text-align:center;}
 .sort-banner.show{display:block;}
@@ -144,6 +150,9 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 /* ── CARD ── */
 .card{background:var(--card);border:1px solid var(--border2);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:18px 10px 13px;position:relative;cursor:pointer;user-select:none;-webkit-user-select:none;transition:border-color .2s,background .2s;overflow:hidden;touch-action:pan-y;}
 .card::after{content:'';position:absolute;inset:0;border-radius:10px;background:linear-gradient(160deg,rgba(255,255,255,.025) 0%,transparent 60%);pointer-events:none;}
+.card.colored{border-color:var(--cardc);background:linear-gradient(160deg,var(--cardc-dim) 0%,var(--card) 70%);}
+.card.colored .card-name{color:var(--cardc);}
+.card.colored .dot{background:var(--cardc);}
 .card.on{border-color:var(--orange);background:linear-gradient(160deg,rgba(255,85,0,.1) 0%,var(--card) 70%);box-shadow:0 0 20px rgba(255,85,0,.1);}
 .card.drag-src{opacity:.3;}
 .card.drag-over{border-color:var(--cyan);background:var(--cyan-dim);}
@@ -153,7 +162,7 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 .dot{position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--dim);transition:background .2s;}
 .card.on .dot{background:var(--orange);box-shadow:0 0 8px var(--orange);animation:blink 1.2s ease-in-out infinite;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.badge{position:absolute;top:6px;left:7px;font-family:'Share Tech Mono',monospace;font-size:12px;font-weight:700;color:var(--cyan);background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.35);border-radius:5px;padding:1px 7px;z-index:2;}
+.badge{position:absolute;top:5px;left:6px;font-family:'Share Tech Mono',monospace;font-size:16px;font-weight:700;color:var(--cyan);background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.35);border-radius:6px;padding:2px 9px;z-index:2;}
 .card.on .badge{color:var(--orange);border-color:var(--orange);background:rgba(255,85,0,.1);}
 .sort-handle{display:none;position:absolute;top:5px;left:50%;transform:translateX(-50%);color:var(--cyan);font-size:11px;letter-spacing:3px;pointer-events:none;}
 body.sort-mode .sort-handle{display:block;}
@@ -494,6 +503,7 @@ body.sort-mode .sort-handle{display:block;}
 <div class="overlay" id="ctxOverlay"><div class="sheet">
   <div class="sheet-title">OPZIONI TASTO</div>
   <div class="sheet-opt" onclick="openRename()"><span class="sheet-opt-icon">✏️</span> Rinomina</div>
+  <div class="sheet-opt" onclick="openColorPicker()"><span class="sheet-opt-icon">🎨</span> Colore</div>
   <div class="sheet-opt" onclick="openSortFromCtx()"><span class="sheet-opt-icon">⠿</span> Sposta</div>
   <div class="sheet-opt danger" onclick="doDelete()"><span class="sheet-opt-icon">🗑</span> Elimina tasto</div>
   <button class="sheet-cancel" onclick="closeSheet('ctxOverlay')">Annulla</button>
@@ -504,6 +514,12 @@ body.sort-mode .sort-handle{display:block;}
   <input class="text-input" id="renameInput" type="text" placeholder="Nome tasto...">
   <button class="confirm-btn" onclick="doRename()">CONFERMA</button>
   <button class="sheet-cancel" onclick="closeSheet('renameOverlay')">Annulla</button>
+</div></div>
+
+<div class="overlay" id="colorOverlay"><div class="sheet">
+  <div class="sheet-title">COLORE TASTO — <span id="colorCardName" style="color:var(--cyan);"></span></div>
+  <div class="color-grid" id="colorGrid"></div>
+  <button class="sheet-cancel" onclick="closeSheet('colorOverlay')">Annulla</button>
 </div></div>
 
 <div class="overlay" id="addOverlay"><div class="sheet">
@@ -1855,12 +1871,14 @@ function startRealtimeSync(){
           c.name = rec.name;
           c.position = rec.position;
           c.records = rec.records;
+          c.color = rec.color;
           // Riordina se necessario
           cards.sort((a,b)=>a.position-b.position);
           // Aggiorna solo l'elemento DOM senza interrompere il timer
           const el = document.querySelector('.card[data-id="'+rec.id+'"]');
           if(el){
             el.querySelector('.card-name').textContent = rec.name;
+            applyCardColor(el,c);
           } else {
             renderAll(); // rebuild completo se DOM non in sync
           }
@@ -1964,6 +1982,65 @@ function cardSessCount(c){
   return logEntries.filter(r=>r.card_id===c.id || (!r.card_id && r.card_name===c.name)).length;
 }
 
+/* ── COLORE TASTO ── */
+const CARD_COLORS = ['#00e5ff','#00ff88','#ffd166','#ff9f43','#ff3355','#ff6ec7','#b06cff','#4d9fff','#9aa0c0'];
+function hexToRgba(h,a){ const n=parseInt(h.slice(1),16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
+function localColorsKey(){ return 'card_colors_'+(currentProject?.id||''); }
+function getLocalColors(){ try{ return JSON.parse(localStorage.getItem(localColorsKey())||'{}'); }catch(e){ return {}; } }
+// Priorità: override locale (usato se il DB non ha la colonna color) → valore DB → nessuno
+function cardColor(c){
+  const l = getLocalColors()[c.id];
+  if(l === 'none') return null;
+  return l || c.color || null;
+}
+function applyCardColor(el,c){
+  const col = cardColor(c);
+  if(col){
+    el.classList.add('colored');
+    el.style.setProperty('--cardc', col);
+    el.style.setProperty('--cardc-dim', hexToRgba(col,.08));
+  } else {
+    el.classList.remove('colored');
+    el.style.removeProperty('--cardc');
+    el.style.removeProperty('--cardc-dim');
+  }
+}
+function openColorPicker(){
+  const sid=ctxId; closeSheet('ctxOverlay');
+  const c=cards.find(x=>x.id===sid); if(!c) return;
+  setTimeout(function(){
+    ctxId=sid;
+    document.getElementById('colorCardName').textContent=c.name;
+    const grid=document.getElementById('colorGrid'); grid.innerHTML='';
+    const cur=cardColor(c);
+    const none=document.createElement('div'); none.className='color-swatch none'; none.textContent=cur?'—':'✓';
+    none.addEventListener('click',()=>applyColor(sid,null));
+    grid.appendChild(none);
+    CARD_COLORS.forEach(col=>{
+      const sw=document.createElement('div'); sw.className='color-swatch'; sw.style.background=col;
+      if(cur===col){ sw.textContent='✓'; sw.style.color='#000'; sw.style.borderColor='#fff'; }
+      sw.addEventListener('click',()=>applyColor(sid,col));
+      grid.appendChild(sw);
+    });
+    showSheet('colorOverlay');
+  },120);
+}
+async function applyColor(id,col){
+  const c=cards.find(x=>x.id===id); if(!c) return;
+  closeSheet('colorOverlay'); ctxId=null;
+  let savedDb=false;
+  if(navigator.onLine){
+    try{ const {error}=await sb.from('cards').update({color:col}).eq('id',id); if(!error) savedDb=true; }catch(e){}
+  }
+  const loc=getLocalColors();
+  if(savedDb){ c.color=col; delete loc[id]; }
+  else { loc[id]=(col||'none'); }
+  localStorage.setItem(localColorsKey(), JSON.stringify(loc));
+  const el=document.querySelector('.card[data-id="'+id+'"]');
+  if(el) applyCardColor(el,c);
+  toast(savedDb ? (col?'🎨 Colore aggiornato':'Colore rimosso') : '🎨 Colore salvato solo su questo dispositivo');
+}
+
 function makeCard(c){
   const div=document.createElement('div');
   div.className='card'+(c.running?' on':'')+(sortMode?' sortable':'');
@@ -1976,6 +2053,7 @@ function makeCard(c){
     '<div class="card-timer" id="t_'+c.id+'">'+fmt(c.elapsed)+'</div>'+
     '<div class="card-btn">'+(c.running?'STOP':'START')+'</div>'+
     '<div class="card-qty" id="q_'+c.id+'">×'+(c.qty||1)+'</div>';
+  applyCardColor(div,c);
   // Qty button: stop propagation so it doesn't trigger toggleCard
   const qBtn = div.querySelector('.card-qty');
   qBtn.addEventListener('touchstart', e=>e.stopPropagation(), {passive:true});
@@ -3007,10 +3085,10 @@ function closeSheet(id){
   if(id==='qtyOverlay') document.getElementById('qtyInput')?.blur();
 }
 function closeAllSheets(){
-  ['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','editProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay','sessionOverlay']
+  ['ctxOverlay','renameOverlay','colorOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','editProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay','sessionOverlay']
   .forEach(id=>document.getElementById(id).classList.remove('show'));
 }
-['ctxOverlay','renameOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','editProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay','sessionOverlay']
+['ctxOverlay','renameOverlay','colorOverlay','addOverlay','exportOverlay','projOverlay','newProjOverlay','renameProjOverlay','editProjOverlay','newContractOverlay','qtyOverlay','renameActivityOverlay','sessionOverlay']
 .forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',e=>{if(e.target.id===id)closeSheet(id);}); });
 
 /* ── TOAST / LOADING ── */

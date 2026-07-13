@@ -1,9 +1,9 @@
 /* ═══════════════════════════════════════
    Service Worker — Rilevazioni PWA
-   v4 — Revisione 13.07.2026
+   v5 — Badge grandi + colori tasti
 ═══════════════════════════════════════ */
 
-const CACHE = 'rilevazioni-v4';
+const CACHE = 'rilevazioni-v5';
 
 // File locali da pre-cachare all'installazione
 const LOCAL_ASSETS = [
