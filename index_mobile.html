@@ -211,6 +211,11 @@ body.sort-mode .sort-handle{display:block;}
 .recent-log-label{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase;font-family:'Share Tech Mono',monospace;padding:0 2px 6px;opacity:.7;}
 .recent-log-row{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;margin-bottom:5px;overflow:hidden;}
 .recent-log-row:last-child{margin-bottom:0;}
+/* Wrapper swipe per le ultime rilevazioni in schermata principale */
+.rl-wrap{border-bottom:none;border-radius:8px;margin-bottom:5px;}
+.rl-wrap:last-child{margin-bottom:0;}
+.rl-wrap .recent-log-row{margin-bottom:0;position:relative;z-index:1;transition:transform .2s ease;}
+.rl-wrap .rec-del-bg,.rl-wrap .rec-ren-bg{border-radius:8px;}
 .rl-name{font-size:13px;font-weight:700;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .rl-dur{font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--orange);flex-shrink:0;}
 .rl-meta{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);flex-shrink:0;white-space:nowrap;}
@@ -2223,27 +2228,36 @@ function updateFooter(){
 }
 
 function renderRecentLog(){
-  const wrap = document.getElementById('recentLog');
-  if(!wrap) return;
+  const box = document.getElementById('recentLog');
+  if(!box) return;
   // Prendi le 3 più recenti (logEntries è già ordinato descending per started_at)
   const recent = logEntries.slice(0, 3);
-  if(!recent.length){
-    wrap.innerHTML = '';
-    return;
-  }
-  let html = '<div class="recent-log-label">Ultime rilevazioni</div>';
+  box.innerHTML = '';
+  if(!recent.length) return;
+  const lbl = document.createElement('div');
+  lbl.className = 'recent-log-label';
+  lbl.textContent = 'Ultime rilevazioni — ← elimina · riassegna → · tieni premuto per quantità';
+  box.appendChild(lbl);
   recent.forEach(r => {
     const isOffline = !!r._offline_pending;
     const durStr = r.duration_ms != null ? fmtS(r.duration_ms) : '—';
     const timeInfo = timeStr(r.started_at) + (r.ended_at ? ' → ' + timeStr(r.ended_at) : '');
-    html += '<div class="recent-log-row">' +
-      '<div class="rl-name">' + esc(r.card_name || '—') + '</div>' +
+    const wrap = document.createElement('div'); wrap.className = 'rec-wrap rl-wrap';
+    const delBg = document.createElement('div'); delBg.className = 'rec-del-bg';
+    delBg.innerHTML = '<span>ELIMINA</span>';
+    const row = document.createElement('div'); row.className = 'recent-log-row';
+    row.innerHTML =
+      '<div class="rl-name rec-name">' + esc(r.card_name || '—') + '</div>' +
       '<div class="rl-meta">' + timeInfo + '</div>' +
       '<div class="rl-dur">' + durStr + '</div>' +
-      (isOffline ? '<div class="rl-pending">📴</div>' : '') +
-    '</div>';
+      ((r.quantity && r.quantity > 1) ? '<div class="rec-qty rl-qty">×' + r.quantity + '</div>' : '') +
+      (isOffline ? '<div class="rl-pending">📴</div>' : '');
+    // Stessi gesti dello storico: ← elimina, → riassegna, long-press quantità
+    if(!isOffline) attachSwipeDelete(wrap, row, delBg, r);
+    wrap.appendChild(delBg);
+    wrap.appendChild(row);
+    box.appendChild(wrap);
   });
-  wrap.innerHTML = html;
 }
 
 /* ── QUANTITÀ ── */
@@ -2303,6 +2317,7 @@ async function confirmQtyEdit(){
     const entry = logEntries.find(e => e.id === entryId);
     if(entry){ entry.quantity = check?.quantity ?? v; console.log('[QTY] Local entry updated to', entry.quantity); }
     renderHistory();
+    updateFooter();
     toast('✓ Quantità salvata: ×' + (check?.quantity ?? v));
   } catch(e) {
     console.error('[QTY] Error:', e);
@@ -2893,7 +2908,8 @@ function attachSwipeDelete(wrap, row, delBg, entry){
     row.classList.remove('swiped-left','swiped-right');
   });
 
-  document.addEventListener('pointerdown', e=>{
+  const closeOutside = e=>{
+    if(!wrap.isConnected){ document.removeEventListener('pointerdown', closeOutside); return; }
     if((swipedLeft||swipedRight) && !wrap.contains(e.target)){
       swipedLeft=false; swipedRight=false;
       row.style.transition='transform .2s ease';
@@ -2902,7 +2918,8 @@ function attachSwipeDelete(wrap, row, delBg, entry){
       renBg.style.opacity='0'; renBg.classList.remove('show');
       row.classList.remove('swiped-left','swiped-right');
     }
-  });
+  };
+  document.addEventListener('pointerdown', closeOutside);
 
   delBg.querySelector('span').addEventListener('click', async e=>{
     e.stopPropagation();
@@ -3014,6 +3031,7 @@ function openRenameActivity(entryId, row){
         if(entry){ entry.card_id = c.id; entry.card_name = c.name; }
         closeSheet('renameActivityOverlay');
         renderHistory();
+        updateFooter();
         toast('✓ Riassegnato a "' + c.name + '"');
       } catch(e) { toast('⚠ ' + e.message); }
     });
