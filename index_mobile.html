@@ -2152,10 +2152,9 @@ function toggleMultiMode(){
 async function toggleCard(id){
   const c=cards.find(x=>x.id===id); if(!c)return; vib(20);
   if(!c.running){
-    // Modalità singola: ferma tutti gli altri tasti attivi prima di avviare
+    // Modalità singola: ferma subito gli altri tasti attivi (il salvataggio avviene in background)
     if(!multiMode){
-      const running = cards.filter(x=>x.running && x.id!==id);
-      for(const other of running){ await toggleCard(other.id); }
+      cards.filter(x=>x.running && x.id!==id).forEach(other=>{ toggleCard(other.id); });
     }
     c.running=true; c.startedAt=new Date().toISOString(); c.start=Date.now()-c.elapsed;
     const el=document.querySelector('.card[data-id="'+id+'"]');
@@ -2178,28 +2177,44 @@ async function toggleCard(id){
         process_id:currentProcess?.id||null, quantity:savedQty,
         session_id:currentSession?.id||null
       };
-    if(!navigator.onLine){
-      queueOffline(payload);
-      logEntries.unshift({...payload, id:'_offline_'+Date.now(), _offline_pending:true, session_name:null});
-      toast('📴 Salvato offline — verrà sincronizzato');
-    } else {
-    try {
-      let res = await sb.from('log_entries').insert(payload).select().single();
-      // Se fallisce per la colonna quantity inesistente, riprova senza
-      if(res.error && res.error.message && res.error.message.includes('quantity')){
-        const {quantity:_, ...payloadNoQty} = payload;
-        res = await sb.from('log_entries').insert(payloadNoQty).select().single();
-      }
-      if(res.error) throw res.error;
-      logEntries.unshift(res.data);
-      await sb.from('cards').update({records:c.records}).eq('id',c.id);
-    } catch(e){
-      if(!navigator.onLine){ queueOffline(payload); toast('📴 Salvato offline — verrà sincronizzato'); }
-      else { toast('⚠ Errore salvataggio: '+e.message); }
-    }
-    }
+    // UI aggiornata subito; salvataggio ottimistico in background
+    const tempId = '_tmp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    logEntries.unshift({...payload, id:tempId, _saving:true, session_name:null});
+    saveEntryBackground(payload, c, tempId);
   }
   updateFooter();
+}
+
+// Salva una rilevazione senza bloccare l'interfaccia.
+// Se la rete manca o non risponde entro 8s, la mette in coda offline (nessun dato perso).
+async function saveEntryBackground(payload, c, tempId){
+  const fallbackOffline = ()=>{
+    queueOffline(payload);
+    const i = logEntries.findIndex(e=>e.id===tempId);
+    const pend = {...payload, id:'_offline_'+Date.now(), _offline_pending:true, session_name:null};
+    if(i>=0) logEntries[i]=pend; else logEntries.unshift(pend);
+    updateFooter();
+    toast('📴 Salvato offline — verrà sincronizzato');
+  };
+  if(!navigator.onLine){ fallbackOffline(); return; }
+  const withTimeout = p => Promise.race([p, new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000))]);
+  try {
+    let res = await withTimeout(sb.from('log_entries').insert(payload).select().single());
+    // Se fallisce per la colonna quantity inesistente, riprova senza
+    if(res.error && res.error.message && res.error.message.includes('quantity')){
+      const {quantity:_, ...payloadNoQty} = payload;
+      res = await withTimeout(sb.from('log_entries').insert(payloadNoQty).select().single());
+    }
+    if(res.error) throw res.error;
+    const i = logEntries.findIndex(e=>e.id===tempId);
+    if(i>=0) logEntries[i]=res.data;
+    else if(!logEntries.some(e=>e.id===res.data.id)) logEntries.unshift(res.data);
+    updateFooter();
+    // Aggiornamento contatore cumulativo: fire-and-forget
+    sb.from('cards').update({records:c.records}).eq('id',c.id).then(()=>{},()=>{});
+  } catch(e){
+    fallbackOffline();
+  }
 }
 
 function stopAllTimers(){ cards.forEach(c=>{c.running=false;c.start=null;c.elapsed=0;}); if(rafId){cancelAnimationFrame(rafId);rafId=null;} }
@@ -2253,7 +2268,8 @@ function renderRecentLog(){
       ((r.quantity && r.quantity > 1) ? '<div class="rec-qty rl-qty">×' + r.quantity + '</div>' : '') +
       (isOffline ? '<div class="rl-pending">📴</div>' : '');
     // Stessi gesti dello storico: ← elimina, → riassegna, long-press quantità
-    if(!isOffline) attachSwipeDelete(wrap, row, delBg, r);
+    // (esclusi entry offline in attesa e quelli in corso di salvataggio)
+    if(!isOffline && !r._saving) attachSwipeDelete(wrap, row, delBg, r);
     wrap.appendChild(delBg);
     wrap.appendChild(row);
     box.appendChild(wrap);
@@ -2979,7 +2995,7 @@ function renderHistory(){
           '<div class="rec-dur">'+fmtS(r.duration_ms)+'</div>'+
           ((r.quantity&&r.quantity>1)?'<div class="rec-qty">×'+r.quantity+'</div>':'')+
         '</div>';
-      if(!isOffline){
+      if(!isOffline && !r._saving){
         attachSwipeDelete(wrap, row, delBg, r);
       }
       wrap.appendChild(delBg);
