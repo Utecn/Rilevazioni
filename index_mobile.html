@@ -26,8 +26,10 @@ body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;di
 
 /* ── LOADING / SPLASH ── */
 /* ── OFFLINE BANNER ── */
-.offline-banner{position:fixed;top:0;left:0;right:0;z-index:10000;background:var(--orange);color:#fff;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;text-align:center;padding:6px 12px;transform:translateY(-100%);transition:transform .3s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.offline-banner{position:fixed;top:0;left:0;right:0;z-index:10000;background:var(--orange);color:#fff;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;text-align:center;padding:6px 12px;transform:translateY(-100%);transition:transform .3s;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;}
 .offline-banner.show{transform:translateY(0);}
+/* Quando il banner è visibile, sposta giù l'app così non copre la barra dei comandi */
+body:has(.offline-banner.show){padding-top:29px;transition:padding-top .3s;}
 .offline-dot{width:7px;height:7px;border-radius:50%;background:#fff;flex-shrink:0;}
 
 .loading-screen{position:fixed;inset:0;z-index:9999;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;overflow:hidden;transition:opacity .4s ease;}
@@ -381,7 +383,7 @@ body.sort-mode .sort-handle{display:block;}
 <body>
 
 <!-- OFFLINE BANNER -->
-<div class="offline-banner" id="offlineBanner"><div class="offline-dot"></div>MODALITÀ OFFLINE — le timbrature saranno sincronizzate al rientro in rete</div>
+<div class="offline-banner" id="offlineBanner"><div class="offline-dot"></div>OFFLINE — sincronizzo al rientro in rete</div>
 
 <!-- LOADING / SPLASH -->
 <div class="loading-screen" id="loadingScreen">

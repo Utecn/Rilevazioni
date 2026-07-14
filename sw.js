@@ -1,9 +1,9 @@
 /* ═══════════════════════════════════════
    Service Worker — Rilevazioni PWA
-   v8 — Accesso offline + Prepara offline
+   v9 — Banner offline non copre più i comandi
 ═══════════════════════════════════════ */
 
-const CACHE = 'rilevazioni-v8';
+const CACHE = 'rilevazioni-v9';
 
 // File locali da pre-cachare all'installazione
 const LOCAL_ASSETS = [
