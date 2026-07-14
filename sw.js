@@ -1,9 +1,9 @@
 /* ═══════════════════════════════════════
    Service Worker — Rilevazioni PWA
-   v7 — Tasti reattivi (salvataggio in background)
+   v8 — Accesso offline + Prepara offline
 ═══════════════════════════════════════ */
 
-const CACHE = 'rilevazioni-v7';
+const CACHE = 'rilevazioni-v8';
 
 // File locali da pre-cachare all'installazione
 const LOCAL_ASSETS = [

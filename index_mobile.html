@@ -541,6 +541,9 @@ body.sort-mode .sort-handle{display:block;}
   <div class="sheet-opt" id="projSheetNewBtn" style="display:none" onclick="closeSheet('projOverlay');openNewProjSheet();">
     <span class="sheet-opt-icon">＋</span> Nuovo Progetto
   </div>
+  <div class="sheet-opt" onclick="closeSheet('projOverlay');prepareOffline();">
+    <span class="sheet-opt-icon">📴</span> Prepara offline <span style="font-size:11px;color:var(--dim);margin-left:auto;">scarica il progetto</span>
+  </div>
   <button class="sheet-cancel" onclick="closeSheet('projOverlay')">Annulla</button>
 </div></div>
 
@@ -846,6 +849,7 @@ async function doLogin(){
     const { data: prof } = await sb.from('profiles').select('name,role,active').eq('id',data.user.id).single();
     if(!prof?.active){ await sb.auth.signOut(); throw new Error('Account disattivato'); }
     currentUser = { id:data.user.id, email:data.user.email, name:prof.name, role:prof.role };
+    dcSave('last_user', currentUser); // per l'accesso offline
     hideLoading();
     await requestWakeLock();
     await tryAutoFullscreen();
@@ -860,6 +864,7 @@ document.getElementById('loginPassword').addEventListener('keydown',e=>{ if(e.ke
 
 async function doLogout(){
   await sb.auth.signOut();
+  try{ localStorage.removeItem(DCACHE_PFX+'last_user'); }catch(e){} // niente accesso offline dopo logout esplicito
   stopRealtimeSync();
   currentUser=null; currentProject=null; currentContract=null; currentProcess=null; cards=[]; logEntries=[];
   stopAllTimers(); closeAllSheets();
@@ -1328,11 +1333,24 @@ async function enterSession(session, proc, label){
 async function openSessionPicker(proc, label){
   try {
     showLoading('CARICAMENTO SESSIONI...');
-    const { data: sessions, error } = await sb.from('sessions')
-      .select('id,name,created_by,created_at')
-      .eq('process_id', proc.id)
-      .order('created_at', { ascending: false });
-    if(error) throw error;
+    let sessions = null;
+    try {
+      const { data, error } = await sb.from('sessions')
+        .select('id,name,created_by,created_at')
+        .eq('process_id', proc.id)
+        .order('created_at', { ascending: false });
+      if(error) throw error;
+      sessions = data;
+    } catch(netErr) {
+      // Offline: usa le sessioni scaricate con "Prepara offline"
+      const cached = dcLoad('sessions_'+currentProject.id);
+      if(cached !== null){
+        sessions = cached.filter(s=>s.process_id===proc.id);
+        toast('📴 Sessioni dalla cache offline');
+      } else if(!navigator.onLine){
+        sessions = []; // nessuna cache: consenti comunque una sessione offline nuova
+      } else { throw netErr; }
+    }
     hideLoading();
 
     if(!sessions || sessions.length === 0){
@@ -3059,6 +3077,57 @@ function openRenameActivity(entryId, row){
   showSheet('renameActivityOverlay');
 }
 
+/* ── PREPARA OFFLINE ── */
+// Scarica in cache tutto il necessario del progetto corrente per lavorare senza rete:
+// tasti, processi, lookup, sessioni e rilevazioni (già divise per sessione, nelle stesse
+// chiavi cache che loadCards/loadProcesses/loadLog usano come fallback offline).
+async function prepareOffline(){
+  if(!currentProject){ toast('Apri prima un progetto'); return; }
+  if(!navigator.onLine){ toast('⚠ Serve la connessione per preparare l\'offline'); return; }
+  showLoading('PREPARO OFFLINE...');
+  try {
+    // Utente (per l'accesso offline)
+    if(currentUser) dcSave('last_user', currentUser);
+    // Lookup
+    if(!lookups.azioni.length){ try{ await loadLookups(); }catch(e){} }
+    // Tasti
+    const {data:cds, error:e1} = await sb.from('cards').select('*').eq('project_id',currentProject.id).order('position');
+    if(e1) throw e1;
+    dcSave('cards_'+currentProject.id, cds||[]);
+    // Processi (stessa select di loadProcesses)
+    const {data:procs, error:e2} = await sb.from('processes')
+      .select('id,azione_id,unita_id,servomezzo_id,attrezzatura_id,etichetta_id,azioni(name),unita(name),servomezzi(name),attrezzature(name),etichette(name)')
+      .eq('project_id',currentProject.id).order('created_at');
+    if(e2) throw e2;
+    dcSave('processes_'+currentProject.id, procs||[]);
+    // Sessioni
+    const {data:sess, error:e3} = await sb.from('sessions')
+      .select('id,name,process_id,project_id,created_by,created_at')
+      .eq('project_id',currentProject.id).order('created_at',{ascending:false});
+    if(e3) throw e3;
+    dcSave('sessions_'+currentProject.id, sess||[]);
+    // Rilevazioni (tutte, poi divise per sessione nelle chiavi usate da loadLog)
+    let logs, e4;
+    ({data:logs, error:e4} = await sb.from('log_entries').select('*, sessions(name)')
+      .eq('project_id',currentProject.id).order('started_at',{ascending:false}).limit(5000));
+    if(e4){
+      ({data:logs, error:e4} = await sb.from('log_entries').select('*')
+        .eq('project_id',currentProject.id).order('started_at',{ascending:false}).limit(5000));
+      if(e4) throw e4;
+    }
+    const mapped=(logs||[]).map(r=>({...r, session_name:r.sessions?.name||null}));
+    dcSave('log_'+currentProject.id, mapped);
+    const bySess={};
+    mapped.forEach(r=>{ const k=r.session_id||'_nosess'; (bySess[k]=bySess[k]||[]).push(r); });
+    (sess||[]).forEach(s=>dcSave('log_'+currentProject.id+'_'+s.id, bySess[s.id]||[]));
+    hideLoading();
+    toast('✓ Offline pronto: '+(cds?.length||0)+' tasti · '+(sess?.length||0)+' sessioni · '+mapped.length+' rilevazioni');
+  } catch(e){
+    hideLoading();
+    toast('⚠ Preparazione fallita: '+e.message);
+  }
+}
+
 /* ── EXPORT EXCEL ── */
 function openExport(){ document.getElementById('emailInput').value=''; showSheet('exportOverlay'); setTimeout(()=>document.getElementById('emailInput').focus(),120); }
 async function doExport(){
@@ -3285,8 +3354,10 @@ async function flushOfflineQueue(){
   } catch(e){ console.warn('Flush queue fallita:', e); }
 }
 
-window.addEventListener('online', ()=>{
+window.addEventListener('online', async ()=>{
   document.getElementById('offlineBanner')?.classList.remove('show');
+  // Rinnova la sessione auth (dopo un avvio offline il token può essere scaduto)
+  try{ await sb.auth.getSession(); }catch(e){ console.warn('Refresh sessione fallito:', e.message); }
   if(currentUser) flushOfflineQueue();
 });
 window.addEventListener('offline', ()=>{
@@ -3333,6 +3404,7 @@ function showLogin(){
       }
       if(prof?.active){
         currentUser={id:session.user.id,email:session.user.email||prof.email,name:prof.name,role:prof.role};
+        dcSave('last_user', currentUser); // per l'accesso offline
         clearTimeout(safetyTimer);
         await requestWakeLock();
         await tryAutoFullscreen();
@@ -3340,6 +3412,20 @@ function showLogin(){
       }
     }
   } catch(e){ console.error('Boot error:', e.message); }
+
+  // ACCESSO OFFLINE: senza rete (o con sessione non rinnovabile) usa l'ultimo utente salvato.
+  // Al rientro in rete la sessione viene rinnovata automaticamente (listener 'online').
+  if(!navigator.onLine){
+    const cachedUser = dcLoad('last_user');
+    if(cachedUser && cachedUser.id){
+      currentUser = cachedUser;
+      clearTimeout(safetyTimer);
+      await requestWakeLock();
+      hideLoading(); afterLogin();
+      toast('📴 Accesso offline — '+cachedUser.name);
+      return;
+    }
+  }
 
   clearTimeout(safetyTimer);
   showLogin();
